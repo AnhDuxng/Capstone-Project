@@ -18,6 +18,7 @@ import {
   XCircle,
   FileCheck,
   FileX,
+  AlertTriangle,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -234,6 +235,26 @@ function VerifyContent() {
                     </p>
                   </div>
                 </>
+              ) : verificationResult.error?.code === "CREDENTIAL_REVOKED" ? (
+                <>
+                  <div className="h-16 w-16 rounded-2xl bg-rose-500/10 flex items-center justify-center shrink-0 text-rose-600">
+                    <AlertTriangle className="h-10 w-10 text-rose-600 animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl font-black text-rose-700 dark:text-rose-400">CHỨNG CHỈ ĐÃ BỊ THU HỒI</h2>
+                      <span className="font-mono text-xs font-bold uppercase bg-rose-600 text-white px-2.5 py-0.5 rounded-full">
+                        REVOKED ON-CHAIN
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground/80 font-medium">
+                      Văn bằng này từng được cấp phát hợp lệ, nhưng hiện tại đã bị Cơ sở Đào tạo thu hồi trên Blockchain (Bitmap Revocation).
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Mọi quyền lợi và giá trị pháp lý gắn liền với văn bằng này hiện không còn hiệu lực.
+                    </p>
+                  </div>
+                </>
               ) : (
                 <>
                   <FileX className="h-16 w-16 text-rose-600 shrink-0" />
@@ -253,7 +274,19 @@ function VerifyContent() {
 
           {/* Credential Data Preview (If Valid/Exists) */}
           {credentialData && (
-            <Card className="border border-border shadow-sm">
+            <Card className={`border shadow-sm relative overflow-hidden ${
+              verificationResult.error?.code === "CREDENTIAL_REVOKED"
+                ? "border-rose-300 dark:border-rose-900 bg-rose-50/10"
+                : "border-border"
+            }`}>
+              {/* Revocation Stamp Badge */}
+              {verificationResult.error?.code === "CREDENTIAL_REVOKED" && (
+                <div className="absolute top-4 right-4 z-10 pointer-events-none">
+                  <div className="border-2 border-rose-600 text-rose-600 font-black tracking-wider text-xs px-3 py-1 rounded uppercase rotate-3 shadow-sm bg-rose-50 dark:bg-rose-950/90">
+                    ⛔ ĐÃ THU HỒI TRÊN BLOCKCHAIN
+                  </div>
+                </div>
+              )}
               <CardContent className="p-6 space-y-4">
                 <h3 className="text-md font-bold text-foreground">Thông tin chứng chỉ số đã giải mã</h3>
                 
