@@ -15,6 +15,8 @@ import {
   RefreshCw,
   ExternalLink,
   AlertTriangle,
+  Copy,
+  ShieldCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -294,7 +296,25 @@ export default function BatchDetailPage({
                 {credentials.map((cred) => (
                   <tr key={cred.id} className="hover:bg-muted/5 transition-colors">
                     <td className="p-3 font-mono font-semibold text-muted-foreground">{cred.batchIndex}</td>
-                    <td className="p-3 font-mono font-bold text-foreground">{cred.studentId}</td>
+                    <td className="p-3">
+                      <div className="font-mono font-bold text-foreground">{cred.studentId}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[130px]" title={cred.credId}>
+                          {cred.credId}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(cred.credId);
+                            toast.success("Đã sao chép Credential ID (URN)!");
+                          }}
+                          className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-muted"
+                          title="Sao chép Credential ID"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-3 font-medium">{cred.degreeTitle}</td>
                     <td className="p-3">
                       {cred.honors ? (
@@ -318,26 +338,34 @@ export default function BatchDetailPage({
                       )}
                     </td>
                     <td className="p-3 text-right">
-                      {cred.isRevoked ? (
-                        <span className="text-xs text-muted-foreground italic">
-                          Thu hồi lúc {new Date(cred.revokedAt!).toLocaleDateString("vi-VN")}
-                        </span>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={revokingId !== null || !batch.txHash}
-                          onClick={() => handleRevokeCredential(cred)}
-                          className="flex items-center justify-center gap-1 ml-auto"
-                        >
-                          {revokingId === cred.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <XCircle className="h-3.5 w-3.5" />
-                          )}
-                          Thu hồi
-                        </Button>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={`/v3/verify?credId=${encodeURIComponent(cred.credId)}`} target="_blank">
+                          <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50">
+                            <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                            Xác thực
+                          </Button>
+                        </Link>
+                        {cred.isRevoked ? (
+                          <span className="text-xs text-muted-foreground italic">
+                            Thu hồi lúc {new Date(cred.revokedAt!).toLocaleDateString("vi-VN")}
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled={revokingId !== null || !batch.txHash}
+                            onClick={() => handleRevokeCredential(cred)}
+                            className="flex items-center justify-center gap-1 h-8"
+                          >
+                            {revokingId === cred.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <XCircle className="h-3.5 w-3.5" />
+                            )}
+                            Thu hồi
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
