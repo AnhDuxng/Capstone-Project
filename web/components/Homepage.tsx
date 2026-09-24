@@ -62,11 +62,10 @@ export function Homepage() {
             <Link href="/holder">
               <Button
                 size="lg"
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-12 rounded-xl backdrop-blur-sm transition-all hover:-translate-y-0.5"
+                className="bg-white hover:bg-slate-100 text-slate-900 font-semibold px-8 h-12 rounded-xl shadow-lg transition-all hover:shadow-white/20 hover:-translate-y-0.5 border border-white"
               >
-                <UserCheck className="mr-2 h-5 w-5" />
-                Cổng Sinh Viên
+                <UserCheck className="mr-2 h-5 w-5 text-blue-600" />
+                <span>Cổng Sinh Viên</span>
               </Button>
             </Link>
           </div>
