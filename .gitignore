@@ -35,7 +35,8 @@ contracts/artifacts/
 contracts/typechain-types/
 
 # Generated fixtures
-contracts/fixtures/
+contracts/fixtures/*
+!contracts/fixtures/graduation-2026.csv
 
 # Old local drafts
 DACN_251/

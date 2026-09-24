@@ -40,4 +40,5 @@ ignition/deployments/
 *.tsbuildinfo
 
 # Generated fixtures (Phase 3)
-fixtures/
+fixtures/*
+!fixtures/graduation-2026.csv

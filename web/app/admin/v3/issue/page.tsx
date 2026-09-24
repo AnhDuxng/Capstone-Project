@@ -74,7 +74,7 @@ export default function BatchIssuerPage() {
   const [statusLogs, setStatusLogs] = useState<string[]>([]);
 
   const downloadTemplate = () => {
-    const csvContent = "studentId,fullName,dob,degreeTitle,graduationDate,honors,holderEmail\n2012345,Nguyen Van A,2002-05-15,Bachelor of Computer Science,2026-06-25,Xuất sắc,studentA@hcmut.edu.vn\n2012346,Tran Thi B,2002-08-20,Bachelor of Computer Science,2026-06-25,Giỏi,studentB@hcmut.edu.vn";
+    const csvContent = "studentId,fullName,dob,degreeTitle,graduationDate,honors,holderEmail\n2052921,Hồ Anh Dũng,2002-05-26,Kỹ sư Khoa học Máy tính,2026-06-15,Xuất sắc,dung.ho265@hcmut.edu.vn\n2210001,Trương Trung Nhung,2002-07-01,Kỹ sư Xây dựng,2026-06-15,Khá,2210001@hcmut.edu.vn\n1910001,Tô Thiện Hương,2000-06-24,Kỹ sư Khoa học Máy tính,2026-06-15,Xuất sắc,1910001@hcmut.edu.vn";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
