@@ -1,0 +1,59 @@
+gantt
+    title Kế hoạch Phase 3 — EIP-712 Trust Anchor (7 tuần)
+    dateFormat  YYYY-MM-DD
+    axisFormat  %d/%m
+    todayMarker off
+    excludes    weekends
+
+    section Design & Foundation
+    Viết SPEC.md & so sánh Phase 2           :w1a, 2026-07-06, 2d
+    Setup monorepo & Hardhat                 :w1b, after w1a, 1d
+    Prisma schema v3                         :w1c, after w1b, 1d
+    Fixture generator                        :w1d, after w1c, 1d
+    Review SPEC với GVHD                     :w1e, after w1d, 2d
+
+    section Smart Contracts
+    IssuerRegistry (add/revokeSigner)        :w2a, after w1e, 2d
+    CredentialRegistry (anchor + bitmap)     :w2b, after w2a, 2d
+    Slither & security review                :w2c, after w2b, 1d
+    Unit tests (30+ cases)                   :w2d, after w2c, 1d
+    Deploy & verify Sepolia                  :w2e, after w2d, 1d
+
+    section EIP-712 SDK
+    Domain & type builder                    :w3a, after w2e, 1d
+    signCredential & verifyCredential        :w3b, after w3a, 2d
+    Selective Disclosure helpers            :w3c, after w3b, 1d
+    Merkle tree utility                      :w3d, after w3c, 1d
+    Vitest suite (40+ tests)                 :w3e, after w3d, 2d
+
+    section Web Application
+    Issuer Portal (CSV upload + pipeline)    :w4a, after w3e, 2d
+    Holder Portal (login, SD UI)             :w4b, after w4a, 1d
+    Verify Portal (offline verify)           :w4c, after w4b, 1d
+    Admin Panel (signer mgmt)                :w4d, after w4c, 1d
+    E2E Playwright tests                     :w4e, after w4d, 2d
+
+    section Bulk Issuance Infra
+    10k fixture generator                    :w5a, after w4e, 1d
+    Background worker (Inngest/BullMQ)       :w5b, after w5a, 1d
+    Progress SSE streaming                   :w5c, after w5b, 1d
+    Measurement harness                      :w5d, after w5c, 1d
+    Dry run trên local Hardhat               :w5e, after w5d, 1d
+    Chạy thật 10k trên Sepolia               :w5f, after w5e, 2d
+
+    section Benchmark & Security
+    Kịch bản A: Sign throughput              :w6a, after w5f, 1d
+    Kịch bản B: End-to-end bulk              :w6b, after w6a, 1d
+    Kịch bản C: Verify latency               :w6c, after w6b, 1d
+    Kịch bản D: Verify concurrency           :w6d, after w6c, 1d
+    Kịch bản E: Gas comparison               :w6e, after w6d, 1d
+    Phân tích & so sánh Phase 2              :w6f, after w6e, 1d
+    Security review & SECURITY.md            :w6g, after w6f, 1d
+
+    section Thesis & Demo
+    Chương Thiết kế giải pháp               :w7a, after w6g, 2d
+    Chương Hiện thực                         :w7b, after w7a, 1d
+    Chương Thực nghiệm                       :w7c, after w7b, 1d
+    Demo video + slide bảo vệ                :w7d, after w7c, 1d
+    Review & polish luận văn                 :w7e, after w7d, 1d
+    Buffer                                   :w7f, after w7e, 1d

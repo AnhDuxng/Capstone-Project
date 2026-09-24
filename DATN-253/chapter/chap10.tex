@@ -1,0 +1,209 @@
+\chapter{Hiện thực bước đầu trong 7 tuần vừa qua}
+
+Sau khi hoàn thành giai đoạn rà soát kiến trúc cũ và nghiên cứu các nền tảng lý thuyết như Verifiable Credentials, DID và ownership proof, nhóm bước sang giai đoạn hiện thực bước đầu các thành phần kỹ thuật cốt lõi của hệ thống mới. Do đây vẫn là giai đoạn giữa kỳ, mục tiêu hiện thực chưa hướng tới việc hoàn thiện toàn bộ hệ thống end-to-end, mà tập trung vào việc xây dựng các khối nền tảng đủ để kiểm chứng tính khả thi của kiến trúc Hybrid.
+
+Trong 7 tuần đầu, nhóm đã hiện thực hoặc hoàn thiện ở mức nguyên mẫu các thành phần sau:
+\begin{itemize}
+    \item thành phần sinh và quản lý dữ liệu chứng chỉ theo cấu trúc VC tối giản;
+    \item thành phần phát hành từ phía issuer;
+    \item bước đầu xác định và thiết kế cơ chế ký số VC;
+    \item mô hình trust anchor on-chain và các thành phần smart contract tương ứng;
+    \item quy trình verify mới ở mức thiết kế logic;
+    \item dữ liệu thử nghiệm và luồng minh hoạ phục vụ kiểm tra nội bộ.
+\end{itemize}
+
+\section{Hiện thực bước đầu thành phần Issuer Service}
+
+\subsection{Vai trò của Issuer Service trong hệ thống mới}
+
+Trong kiến trúc blockchain-native trước đây, quy trình phát hành chứng chỉ chủ yếu xoay quanh việc tạo metadata JSON, đưa metadata lên IPFS và gọi smart contract để mint chứng chỉ dưới dạng NFT/SBT. Ở kiến trúc Hybrid mới, logic phát hành thay đổi đáng kể: thay vì tạo token làm đối tượng chứng chỉ chính, hệ thống cần tạo ra một \textit{Verifiable Credential} hoàn chỉnh, có thể ký số và sử dụng như tài liệu chứng chỉ số độc lập.
+
+Vì vậy, \textit{Issuer Service} được xác định là một trong những thành phần quan trọng nhất cần hiện thực sớm. Vai trò của thành phần này bao gồm:
+\begin{itemize}
+    \item tiếp nhận dữ liệu đầu vào từ phía đơn vị cấp phát;
+    \item chuẩn hoá dữ liệu theo cấu trúc của một credential;
+    \item sinh ra VC dưới dạng dữ liệu JSON;
+    \item chuẩn bị dữ liệu cho quá trình ký số;
+    \item liên kết chứng chỉ với holder và các thành phần trust anchor cần thiết.
+\end{itemize}
+
+\subsection{Dữ liệu đầu vào của Issuer Service}
+
+Trong giai đoạn hiện tại, nhóm chưa hiện thực một pipeline phát hành ở quy mô lớn, nhưng đã thiết kế và thử nghiệm đầu vào cơ bản cho issuer service. Các nhóm dữ liệu đầu vào bao gồm:
+\begin{itemize}
+    \item thông tin nhận diện của chứng chỉ: tên chứng chỉ, loại chứng chỉ, mã định danh nội bộ;
+    \item thông tin đơn vị cấp phát: tên trường/khoa/chương trình, mã issuer hoặc DID của issuer;
+    \item thông tin người học: định danh của holder, ví dụ địa chỉ ví, DID hoặc một mã định danh đã được băm;
+    \item thời điểm phát hành và các mốc thời gian liên quan;
+    \item các thuộc tính nghiệp vụ: chương trình đào tạo, học phần, mô tả năng lực hoặc nội dung chứng nhận.
+\end{itemize}
+
+Việc chuẩn hoá đầu vào từ sớm có vai trò rất quan trọng vì trong kiến trúc VC, chất lượng của dữ liệu phát hành ảnh hưởng trực tiếp tới khả năng verify ở phía verifier. Nếu dữ liệu đầu vào không được tổ chức rõ ràng, chữ ký số tuy vẫn hợp lệ về mặt mật mã nhưng không đảm bảo được tính nhất quán của hệ thống.
+
+\subsection{Cấu trúc VC nguyên mẫu đã được xây dựng}
+
+Từ các đầu vào trên, nhóm đã xây dựng một cấu trúc VC nguyên mẫu ở mức tối thiểu, dùng để biểu diễn chứng chỉ số trong hệ thống. Mặc dù chưa hiện thực đầy đủ toàn bộ ngữ nghĩa của chuẩn W3C VC, nhưng mô hình dữ liệu hiện tại đã phản ánh các trường cốt lõi cần thiết, bao gồm:
+\begin{itemize}
+    \item thông tin định danh credential;
+    \item issuer;
+    \item credential subject;
+    \item issuance date;
+    \item trạng thái hoặc tham chiếu thu hồi;
+    \item proof (dự kiến dùng trong giai đoạn tiếp theo);
+    \item dữ liệu mô tả học thuật.
+\end{itemize}
+
+Việc xây dựng thành công cấu trúc dữ liệu này cho phép nhóm:
+\begin{itemize}
+    \item chuyển từ metadata token-centric sang credential-centric;
+    \item có đầu ra nhất quán để tiếp tục phát triển khối ký số;
+    \item chuẩn bị cho verify flow ở phía verifier trong các tuần sau.
+\end{itemize}
+
+Nói cách khác, trong 7 tuần đầu, nhóm đã hoàn thành được bước quan trọng là \textbf{tách logic chứng chỉ khỏi token} và biểu diễn chứng chỉ như một đối tượng dữ liệu độc lập.
+
+\subsection{Trạng thái hiện thực của Issuer Service}
+
+Ở thời điểm báo cáo giữa kỳ, Issuer Service mới được hiện thực ở mức:
+\begin{itemize}
+    \item sinh dữ liệu VC nguyên mẫu từ dữ liệu đầu vào;
+    \item chuẩn bị khối dữ liệu để ký;
+    \item xác định quy trình phát hành từ issuer sang holder.
+\end{itemize}
+
+Những phần \textbf{chưa hoàn thiện hoàn toàn} trong giai đoạn này gồm:
+\begin{itemize}
+    \item cơ chế ký số hoàn chỉnh bằng khoá issuer;
+    \item quy trình phân phối VC tới holder;
+    \item liên kết đầy đủ với trust anchor on-chain;
+    \item giao diện hoàn chỉnh để issuer thao tác trực tiếp với toàn bộ luồng phát hành.
+\end{itemize}
+
+Tuy nhiên, việc đạt được một VC generator ở mức nguyên mẫu đã đủ để chứng minh rằng hướng hiện thực mới là khả thi và có thể tiếp tục phát triển trong các tuần tiếp theo.
+
+\section{Thiết kế và hiện thực bước đầu cơ chế ký số VC}
+
+\subsection{Mục tiêu của khối ký số}
+
+Trong hệ thống Hybrid, chữ ký số là thành phần thay thế cho vai trò ``xác thực bởi blockchain'' trong mô hình cũ. Nếu trong blockchain-native, verifier chủ yếu tin vào record on-chain và hash metadata, thì trong mô hình VC, verifier cần tin vào:
+\begin{itemize}
+    \item chữ ký số của issuer;
+    \item định danh và trust level của issuer;
+    \item trạng thái hiệu lực của credential.
+\end{itemize}
+
+Do đó, trong 7 tuần đầu, nhóm đã dành một phần đáng kể thời gian để nghiên cứu và xác định cách tổ chức khối ký số cho VC.
+
+\subsection{Những gì đã hoàn thành}
+
+Nhóm đã hoàn thành các bước sau:
+\begin{itemize}
+    \item xác định được vị trí logic của \texttt{proof} trong credential;
+    \item làm rõ vai trò của private key của issuer trong việc phát hành chứng chỉ;
+    \item xác định quy trình ở mức logic: VC data $\rightarrow$ canonical form $\rightarrow$ signing $\rightarrow$ proof;
+    \item phân biệt được phần dữ liệu được ký và phần dữ liệu dùng để verify;
+    \item xác định được rằng blockchain không thay thế chữ ký số của issuer, mà chỉ hỗ trợ trust anchoring cho issuer và trạng thái chứng chỉ.
+\end{itemize}
+
+\subsection{Ý nghĩa của giai đoạn này}
+
+Mặc dù nhóm chưa hoàn tất một pipeline ký số production-ready, phần nghiên cứu và hiện thực bước đầu của khối ký số có ý nghĩa rất lớn. Nó giúp nhóm trả lời được các câu hỏi quan trọng:
+\begin{itemize}
+    \item trong kiến trúc mới, ai là người thực sự ``xác nhận'' chứng chỉ?
+    \item phần nào của chứng chỉ cần được ký?
+    \item verifier sẽ kiểm tra tính hợp lệ dựa trên chữ ký như thế nào?
+\end{itemize}
+
+Nhờ đó, khối verify trong các tuần tiếp theo có thể được thiết kế bám sát luồng dữ liệu thực tế, thay vì chỉ dừng ở mức lý thuyết.
+
+\section{Thiết kế và hiện thực bước đầu Trust Anchor on-chain}
+
+\subsection{Vai trò của trust anchor trong hệ thống mới}
+
+Ở kiến trúc cũ, smart contract là trung tâm của toàn bộ hệ thống: chứng chỉ được mint trực tiếp, lưu trạng thái, liên kết với owner và được verifier đọc trực tiếp từ chain. Trong kiến trúc Hybrid, smart contract không còn giữ vai trò đó nữa. Thay vào đó, blockchain trở thành một lớp neo tin cậy cho các thông tin tối thiểu nhưng quan trọng.
+
+Nhóm đã xác định trust anchor on-chain trong hệ thống mới cần thực hiện ba chức năng chính:
+\begin{enumerate}
+    \item quản lý danh sách issuer hợp lệ;
+    \item hỗ trợ lưu hoặc đối chiếu anchor/hash của chứng chỉ;
+    \item lưu trạng thái revocation hoặc status của credential.
+\end{enumerate}
+
+\subsection{Các smart contract đã được thiết kế ở mức ban đầu}
+
+Trong 7 tuần đầu, nhóm chưa hoàn thiện toàn bộ contract implementation cho mô hình mới, nhưng đã xác định rõ các contract hoặc module cần có:
+\begin{itemize}
+    \item \textbf{Issuer Registry}: contract hoặc module lưu danh sách issuer được công nhận, có thể dùng để verifier kiểm tra nguồn phát hành;
+    \item \textbf{Revocation / Status Registry}: contract hoặc module hỗ trợ kiểm tra chứng chỉ đã bị thu hồi hay chưa;
+    \item \textbf{Anchor Storage} (tuỳ mức hiện thực): nơi lưu anchor/hash của VC để hỗ trợ đối chiếu toàn vẹn khi cần.
+\end{itemize}
+
+Việc tách nhỏ vai trò smart contract như vậy là một khác biệt lớn so với kiến trúc cũ, nơi một contract chứng chỉ vừa lưu dữ liệu, vừa quản lý trạng thái, vừa đóng vai trò registry.
+
+\subsection{Ý nghĩa của việc thiết kế trust anchor riêng}
+
+Việc xác định trust anchor như một lớp riêng biệt giúp hệ thống có nhiều ưu điểm hơn:
+\begin{itemize}
+    \item giảm số lượng dữ liệu phải lưu trên blockchain;
+    \item giảm chi phí giao dịch;
+    \item giảm mức phụ thuộc vào logic token;
+    \item dễ mở rộng sang mô hình nhiều issuer hoặc liên tổ chức về sau;
+    \item dễ tích hợp với chuẩn VC hơn so với mô hình token-centric.
+\end{itemize}
+
+Trong giai đoạn giữa kỳ, nhóm đã hoàn thành ở mức \textbf{thiết kế logic và phân rã chức năng} cho trust anchor on-chain, chuẩn bị cho việc hiện thực contract cụ thể trong các tuần kế tiếp.
+
+\section{Chuẩn bị dữ liệu và kịch bản kiểm thử nội bộ}
+
+Bên cạnh phần thiết kế và phát triển các thành phần kỹ thuật chính, nhóm cũng đã chuẩn bị các bộ dữ liệu thử nghiệm dùng cho kiểm tra nội bộ. Mục tiêu của việc này là:
+\begin{itemize}
+    \item kiểm tra xem cấu trúc VC có đủ để biểu diễn chứng chỉ học tập hay không;
+    \item kiểm tra luồng dữ liệu từ issuer sang holder;
+    \item kiểm tra khả năng tích hợp về sau với trust anchor on-chain;
+    \item chuẩn bị cho verify flow trong giai đoạn tiếp theo.
+\end{itemize}
+
+Các dữ liệu thử nghiệm hiện tại bao gồm:
+\begin{itemize}
+    \item một số credential mẫu với các loại thông tin khác nhau;
+    \item dữ liệu giả lập của issuer và holder;
+    \item các trường hợp trạng thái như valid, revoked hoặc chưa xác định issuer;
+    \item cấu hình logic cho việc tạo challenge trong ownership proof.
+\end{itemize}
+
+Việc chuẩn bị dữ liệu và kịch bản thử nghiệm từ sớm giúp giảm rủi ro khi nhóm bước sang giai đoạn tích hợp, đồng thời làm rõ được những trường hợp biên mà hệ thống cần xử lý.
+
+\section{Những gì chưa hoàn thiện trong 7 tuần đầu}
+
+Để phản ánh đúng thực trạng, nhóm xác định rằng sau 7 tuần đầu, hệ thống mới vẫn chưa hoàn chỉnh toàn bộ quy trình. Những phần chưa hoàn thiện hoặc mới ở mức thiết kế gồm:
+\begin{itemize}
+    \item verify portal cho VC;
+    \item ownership proof ở mức có thể tương tác end-to-end;
+    \item pipeline ký số và verify chữ ký hoàn chỉnh;
+    \item cơ chế revocation chạy thực sự trên smart contract;
+    \item tích hợp hoàn chỉnh giữa holder, verifier và trust anchor.
+\end{itemize}
+
+Tuy nhiên, đây là điều nằm trong đúng kế hoạch của luận văn. Mục tiêu của 7 tuần đầu không phải là hoàn thiện toàn bộ sản phẩm, mà là hoàn thành \textbf{nền móng kỹ thuật và học thuật} cho hệ thống mới.
+
+\section{Đánh giá kết quả hiện thực bước đầu}
+
+Từ góc nhìn giữa kỳ, nhóm đánh giá các kết quả hiện thực bước đầu đạt được là khả quan vì ba lý do.
+
+Thứ nhất, nhóm đã chứng minh được rằng kiến trúc mới không chỉ dừng ở mức ý tưởng, mà đã có thể chuyển hoá thành các thành phần phần mềm rõ ràng như issuer service, data schema và trust anchor modules.
+
+Thứ hai, phần hiện thực bước đầu đã giúp xác nhận rằng việc dịch chuyển từ token-centric sang credential-centric là khả thi, đồng thời không làm mất đi các ưu điểm cốt lõi mà nhóm đã xây dựng trước đó như cơ chế verify công khai, hash-based integrity và on-chain trust.
+
+Thứ ba, những phần đã làm được trong 7 tuần đầu tạo ra nền tảng rất trực tiếp cho các công việc tiếp theo. Cụ thể:
+\begin{itemize}
+    \item VC generator là nền tảng cho khối signing;
+    \item signing logic là nền tảng cho verifier portal;
+    \item trust anchor design là nền tảng cho on-chain implementation;
+    \item dữ liệu thử nghiệm là nền tảng cho benchmark và demo.
+\end{itemize}
+
+\section{Kết luận của phần hiện thực bước đầu}
+
+Trong 7 tuần đầu, nhóm chưa hướng tới việc hoàn thiện toàn bộ hệ thống Hybrid, nhưng đã đạt được những kết quả hiện thực đủ quan trọng để chứng minh tính khả thi của hướng nghiên cứu mới. Cụ thể, nhóm đã xây dựng được các thành phần nền tảng như issuer service ở mức nguyên mẫu, cấu trúc VC ban đầu, mô hình logic cho signing, phân rã trust anchor on-chain và bộ dữ liệu phục vụ kiểm thử nội bộ. 
+
+Những kết quả này cho thấy luận văn không chỉ dừng lại ở việc chuyển đổi lý thuyết, mà đã bước sang giai đoạn hình thành một hệ thống kỹ thuật mới có thể tiếp tục được hiện thực và đánh giá trong nửa sau của quá trình thực hiện.

@@ -1,0 +1,11 @@
+{
+  "network": "sepolia",
+  "chainId": "11155111",
+  "deployer": "0x6dc04124c8032a72E579de839747c55FB0d5329B",
+  "contracts": {
+    "IssuerRegistry": "0x5B7f91FF33EB0032Ce803aCF2B9f00a6DbaD744F",
+    "CredentialRegistryV3": "0xa5FaCAeA0925e9D1cEFb6a2E7A0509Ed63378c9f"
+  },
+  "defaultSigner": "0x6dc04124c8032a72E579de839747c55FB0d5329B",
+  "deployedAt": "2026-09-07T14:35:27.782Z"
+}

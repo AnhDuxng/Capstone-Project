@@ -1,0 +1,99 @@
+% Appendix: Implementation Resources, Deployment Manifest, and Acronyms
+
+\chapter{Implementation Artifacts and Source Code}
+\label{app:resources}
+
+The complete source code, smart contract suite, modular TypeScript SDK, and interactive web application portals developed for this Capstone Project are publicly archived on GitHub for academic reference, evaluation, and experimental reproducibility:
+
+\begin{quote}
+\textbf{GitHub Repository (Public Source Code):}\\
+\url{https://github.com/AnhDuxng/Capstone-Project}
+\end{quote}
+
+A high-definition video demonstration showcasing the end-to-end bulk issuance workflow ($20 \times 500 = 10,000$ credentials), holder selective disclosure wallet, and the canonical 10-step public verification pipeline is accessible at:
+
+\begin{quote}
+\textbf{Demonstration Video (Google Drive):}\\
+\url{https://drive.google.com/[VIDEO_DEMO_LINK_PLACEHOLDER]} % To be updated upon defense
+\end{quote}
+
+\section{Smart Contract Deployment Manifest on Ethereum Sepolia}
+
+The smart contract suite and 10,000-credential batch anchor transaction deployed on the Ethereum Sepolia Testnet are verified and permanently indexed at the following on-chain addresses:
+
+\begin{itemize}
+    \item \textbf{Target Network}: Ethereum Sepolia Testnet (Chain ID: 11155111)
+    \item \textbf{IssuerRegistry Contract}:\\
+    \texttt{0x2b8106d33306B6d7D913d8a4369408e0e7a2b25B}
+    \item \textbf{CredentialRegistryV3 Contract (Trust Anchor)}:\\
+    \texttt{0xb851a7C392502f83F0b769ea873d6A220d9f4e24}
+    \item \textbf{10,000-Credential Cohort Anchor Transaction}:\\
+    \texttt{0x54b11343452cc34c4e73b992cdc3dfacb386a9f0a207dbc82822cc59c3734d3e}
+    \item \textbf{Confirmed Block Number}: 11,654,826
+    \item \textbf{Total Gas Consumed}: 167,804 gas (amortized 16.78 gas / credential)
+\end{itemize}
+
+\chapter{List of Abbreviations and Acronyms}
+\label{app:acronyms}
+
+Table~\ref{tab:abbreviations} provides a comprehensive alphabetical reference of the primary technical abbreviations, cryptographic acronyms, and domain terminology utilized throughout this thesis manuscript:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|>{\centering\arraybackslash}p{2.6cm}|>{\RaggedRight}p{12.5cm}|}
+\hline
+\textbf{Acronym} & \textbf{Full Definition and Technical Description} \\
+\hline
+ABI & Application Binary Interface -- Standardized interface specification for EVM smart contract interaction \\
+\hline
+API & Application Programming Interface -- Defined protocol enabling structured client-server communication \\
+\hline
+CSPRNG & Cryptographically Secure Pseudorandom Number Generator -- High-entropy cryptographic randomness source \\
+\hline
+DID & Decentralized Identifier -- Globally unique, cryptographically verifiable identifier standard (W3C) \\
+\hline
+ECDSA & Elliptic Curve Digital Signature Algorithm -- Asymmetric digital signature scheme based on secp256k1 curve \\
+\hline
+EIP & Ethereum Improvement Proposal -- Formal specification governing protocol and application-level standards \\
+\hline
+ERC & Ethereum Request for Comments -- Application-level token and interface standards (e.g., ERC-721) \\
+\hline
+EVM & Ethereum Virtual Machine -- Turing-complete decentralized state execution runtime on Ethereum \\
+\hline
+IPFS & InterPlanetary File System -- Content-addressed peer-to-peer distributed hypermedia storage protocol \\
+\hline
+JSON-LD & JavaScript Object Notation for Linked Data -- Serialization format for structured linked data \\
+\hline
+JWT & JSON Web Token -- Compact, URL-safe assertion format representing signed claims between parties \\
+\hline
+NFT & Non-Fungible Token -- Unique, indivisible digital blockchain asset standard \\
+\hline
+ORM & Object-Relational Mapping -- Data layer mapping relational tables to strongly-typed TypeScript models \\
+\hline
+PII & Personally Identifiable Information -- Sensitive private data (national IDs, birthdates, transcripts) \\
+\hline
+REST & Representational State Transfer -- Stateless architectural pattern for scalable networked services \\
+\hline
+RPC & Remote Procedure Call -- Communication protocol allowing clients to query blockchain node states \\
+\hline
+SBT & Soulbound Token -- Non-transferable token bound permanently to a specific decentralized address \\
+\hline
+SD-JWT & Selective Disclosure for JSON Web Tokens (RFC 9901) -- Cryptographic disclosure format \\
+\hline
+SSE & Server-Sent Events -- Unidirectional persistent HTTP streaming channel from server to browser UI \\
+\hline
+SSI & Self-Sovereign Identity -- User-centric decentralized digital identity governance paradigm \\
+\hline
+URN & Uniform Resource Name -- Persistent, location-independent canonical resource identifier \\
+\hline
+VC & Verifiable Credential -- Cryptographically tamper-evident digital credential standard (W3C VC v2.0) \\
+\hline
+Zod & TypeScript-first schema declaration and runtime validation library with static type inference \\
+\hline
+\end{tabular}
+}
+\caption{Comprehensive Reference List of Abbreviations and Acronyms}
+\label{tab:abbreviations}
+\end{table}

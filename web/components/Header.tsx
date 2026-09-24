@@ -1,70 +1,56 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 
-interface HeaderProps {
-  onNavigate: (page: string) => void;
-  currentPage: string;
-  isLoggedIn: boolean;
-  userName: string;
-  onLogout: () => void;
-}
+export function Header() {
+  const pathname = usePathname();
 
-export function Header({ onNavigate, currentPage, isLoggedIn, userName, onLogout }: HeaderProps) {
+  const navItems = [
+    { href: "/", label: "Trang chủ" },
+    { href: "/holder", label: "Cổng Sinh Viên" },
+    { href: "/v3/verify", label: "Xác thực V3" },
+    { href: "/admin/v3", label: "Quản trị V3" },
+  ];
+
   return (
-    <header className="border-b bg-white sticky top-0 z-50" suppressHydrationWarning>
+    <header className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-50" suppressHydrationWarning>
       <div className="container mx-auto px-6 py-4" suppressHydrationWarning>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => onNavigate('home')}>
-            <ShieldCheck className="h-8 w-8" style={{ color: '#0D1B2A' }} />
-            <span className="text-xl font-semibold" style={{ color: '#0D1B2A' }}>CertifyChain</span>
-          </div>
-          
-          <nav className="hidden md:flex items-center gap-6">
-            <button
-              onClick={() => onNavigate('home')}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                currentPage === 'home' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Home
-            </button>
-            {/* <button
-              onClick={() => onNavigate('verify')}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                currentPage === 'verify' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              Verify Certificate
-            </button> */}
-            <button
-              onClick={() => onNavigate('about')}
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                currentPage === 'about' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              About
-            </button>
-          </nav>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <ShieldCheck className="h-8 w-8 text-blue-600 group-hover:text-blue-500 transition-colors" />
+            <span className="text-xl font-semibold text-gray-900">
+              BK Credential
+            </span>
+          </Link>
 
-          <div className="flex items-center gap-4">
-            {isLoggedIn ? (
-              <>
-                <span className="text-sm text-muted-foreground">Welcome, {userName}</span>
-                <Button variant="outline" size="sm" onClick={onLogout}>
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <Button size="sm" onClick={() => onNavigate('home')}>
-                Get Started
-              </Button>
-            )}
-          </div>
+          {/* Navigation */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navItems.map((item) => {
+              const isActive =
+                item.href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(item.href);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
+                    isActive
+                      ? "text-blue-600 bg-blue-50"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </div>
       </div>
     </header>
   );
 }
-

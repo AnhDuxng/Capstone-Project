@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { checkUserRole, UserRole } from "@/lib/roles";
+import { checkUserRoleV3, UserRoleV3 } from "@/lib/v3/roles";
 import {
   LayoutDashboard,
   FileInput,
@@ -74,10 +75,55 @@ const navItems: NavItem[] = [
   },
 ];
 
+const navItemsV3: NavItem[] = [
+  {
+    title: "Dashboard V3",
+    href: "/admin/v3",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Quản lý Signers V3",
+    href: "/admin/v3/signers",
+    icon: Shield,
+    requiresAdmin: true,
+  },
+  {
+    title: "Nhập & Phát hành V3",
+    icon: FileInput,
+    requiresIssuer: true,
+    children: [
+      {
+        title: "Phát hành Batch mới",
+        href: "/admin/v3/issue",
+      },
+      {
+        title: "Lịch sử Batches",
+        href: "/admin/v3/batches",
+      },
+    ],
+  },
+  {
+    title: "Quản lý & Thu hồi V3",
+    href: "/admin/v3/revoke",
+    icon: ClipboardList,
+    requiresIssuer: true,
+  },
+  {
+    title: "Quay lại Phase 2",
+    href: "/admin",
+    icon: HelpCircle,
+  },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
-  const [expandedItems, setExpandedItems] = useState<string[]>(["Nhập văn bằng"]);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const isV3 = pathname.startsWith("/admin/v3");
+  const currentNavItems = isV3 ? navItemsV3 : navItems;
+
+  const [expandedItems, setExpandedItems] = useState<string[]>(
+    isV3 ? ["Nhập & Phát hành V3"] : ["Nhập văn bằng"]
+  );
+  const [userRole, setUserRole] = useState<UserRole | UserRoleV3 | null>(null);
   const [loadingRole, setLoadingRole] = useState(true);
 
   const { authenticated } = usePrivy();
@@ -95,7 +141,9 @@ export default function Sidebar() {
       setLoadingRole(true);
       try {
         const activeWallet = wallets[0];
-        const role = await checkUserRole(activeWallet as { getEthereumProvider: () => Promise<unknown> });
+        const role = isV3 
+          ? await checkUserRoleV3(activeWallet as { getEthereumProvider: () => Promise<unknown> })
+          : await checkUserRole(activeWallet as { getEthereumProvider: () => Promise<unknown> });
         setUserRole(role);
       } catch (error) {
         console.error("Error checking role:", error);
@@ -106,7 +154,7 @@ export default function Sidebar() {
     }
 
     fetchRole();
-  }, [authenticated, wallets]);
+  }, [authenticated, wallets, isV3]);
 
   const toggleExpand = (title: string) => {
     setExpandedItems((prev) =>
@@ -131,7 +179,7 @@ export default function Sidebar() {
   };
 
   // Filter nav items based on user role
-  const filteredNavItems = navItems.filter((item) => {
+  const filteredNavItems = currentNavItems.filter((item) => {
     // If requires admin and user is not admin, hide
     if (item.requiresAdmin && !userRole?.isAdmin) {
       return false;

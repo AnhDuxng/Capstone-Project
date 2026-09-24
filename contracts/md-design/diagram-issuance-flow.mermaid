@@ -1,0 +1,35 @@
+sequenceDiagram
+    autonumber
+    participant Admin as Admin
+    participant IssuerPortal as Issuer Portal
+    participant SDK as EIP-712 SDK
+    participant DB as PostgreSQL
+    participant Contract as IssuerRegistry + CredentialRegistry
+    participant IPFS as IPFS (optional)
+
+    Note over Admin,Contract: Bước 1: Đăng ký Trust Anchor (một lần)
+    Admin->>Contract: addSigner(issuerAddress, did)
+    Contract-->>Admin: SignerAdded event
+
+    Note over IssuerPortal,IPFS: Bước 2: Phát hành batch 10.000 credentials (OFF-CHAIN)
+    IssuerPortal->>IssuerPortal: Upload CSV (10.000 dòng)
+    IssuerPortal->>SDK: buildCredentials(csv, template)
+    loop 10.000 lần — HOÀN TOÀN OFF-CHAIN
+        SDK->>SDK: Sinh disclosures (salt, key, value)
+        SDK->>SDK: Tính privateClaims commitments
+        SDK->>SDK: Hash publicClaims → publicClaimsHash
+        SDK->>SDK: signTypedData(domain, types, credential)
+    end
+    SDK->>SDK: buildMerkleTree(10.000 leaves) → root + proofs
+    SDK-->>IssuerPortal: { credentials[], merkleRoot, proofs }
+
+    Note over IssuerPortal,IPFS: Bước 3: Anchor (ON-CHAIN — 1 transaction duy nhất)
+    IssuerPortal->>IPFS: pin(batchMetadata.json) [optional]
+    IPFS-->>IssuerPortal: ipfsCid
+    IssuerPortal->>Contract: anchorBatch(merkleRoot, batchIndex, 10000, ipfsCid)
+    Contract->>Contract: anchors[merkleRoot] = { now, issuer, 10000, cid }
+    Contract-->>IssuerPortal: BatchAnchored event + txHash
+    IssuerPortal->>DB: Lưu Batch + 10.000 Credentials + proofs
+
+    Note over IssuerPortal,IPFS: Tổng chi phí on-chain: 1 tx ≈ 25M gas ≈ $0.23/cred (mainnet)
+    Note over IssuerPortal,IPFS: Zero gas per credential ✓

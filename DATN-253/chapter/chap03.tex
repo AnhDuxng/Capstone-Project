@@ -1,0 +1,285 @@
+% Chapter 3: System Design — Mid-Term Report Phase 3
+
+\chapter{System Design}
+
+\section{Overall System Architecture}
+
+\subsection{Architecture Overview}
+
+The Phase 3 architecture follows the classical \textbf{Trust Triangle} model (Issuer --- Holder --- Verifier), where Ethereum acts as an immutable on-chain Trust Anchor while all heavy cryptographic operations and credential assets reside off-chain:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    scale=0.88, every node/.style={transform shape},
+    box/.style={draw=black!70, fill=blue!5, rounded corners=3pt, thick, align=center, font=\small, inner sep=6pt},
+    sdk/.style={draw=orange!80!black, fill=orange!10, rounded corners=3pt, thick, align=center, font=\small, inner sep=6pt},
+    contract/.style={draw=purple!80!black, fill=purple!10, rounded corners=3pt, thick, align=center, font=\small, inner sep=6pt},
+    portal/.style={draw=teal!80!black, fill=teal!10, rounded corners=3pt, thick, align=center, font=\small, inner sep=6pt},
+    groupbox/.style={draw=black!40, dashed, fill=gray!3, rounded corners=6pt, inner sep=10pt},
+    arrow/.style={-{Stealth[scale=1.1]}, thick, draw=black!75},
+    darrow/.style={{Stealth[scale=1.1]}-{Stealth[scale=1.1]}, thick, draw=purple!80!black, dashed}
+]
+
+% Off-Chain Layer
+\node[box] (issuer) {\textbf{Issuer Portal}\\(CSV Ingestion \& UI)};
+\node[sdk, right=1.0cm of issuer] (sdk) {\textbf{EIP-712 SDK}\\\texttt{signTypedData()}\\\texttt{createDisclosure()}};
+\node[box, right=1.0cm of sdk] (merkle) {\textbf{Batch Construction}\\\textit{N} Credentials JSON\\+ StandardMerkleTree};
+
+% Group Off-Chain
+\begin{scope}[on background layer]
+    \node[groupbox, fit=(issuer) (sdk) (merkle), label={[font=\bfseries\small, text=blue!70!black]above:\textbf{OFF-CHAIN PROCESSING LAYER (Zero Gas)}}] (offchain) {};
+\end{scope}
+
+% On-Chain Layer
+\node[contract, below=2.2cm of issuer] (issuerReg) {\textbf{IssuerRegistry.sol}\\\texttt{isSigner(address)}\\\texttt{addSigner() / revokeSigner()}};
+\node[contract, below=2.2cm of merkle] (credReg) {\textbf{CredentialRegistryV3.sol}\\\texttt{anchorBatch(merkleRoot, size)}\\\texttt{isRevoked() [Bitmap uint256]}};
+
+% Group On-Chain
+\begin{scope}[on background layer]
+    \node[groupbox, fit=(issuerReg) (credReg), label={[font=\bfseries\small, text=purple!70!black]below:\textbf{ON-CHAIN TRUST ANCHOR LAYER (Ethereum Sepolia)}}] (onchain) {};
+\end{scope}
+
+% Web Portals Layer
+\node[portal, below=1.8cm of issuerReg] (p1) {\textbf{Issuer Portal}};
+\node[portal, right=0.4cm of p1] (p2) {\textbf{Holder Portal}};
+\node[portal, right=0.4cm of p2] (p3) {\textbf{Verifier Portal}};
+\node[portal, right=0.4cm of p3] (p4) {\textbf{Admin Panel}};
+
+% Group Portals
+\begin{scope}[on background layer]
+    \node[groupbox, fit=(p1) (p2) (p3) (p4), label={[font=\bfseries\small, text=teal!70!black]below:\textbf{APPLICATION LAYER (Next.js 14 + Prisma + PostgreSQL)}}] (portals) {};
+\end{scope}
+
+% Arrows
+\draw[arrow] (issuer) -- node[above, font=\footnotesize] {Raw Data} (sdk);
+\draw[arrow] (sdk) -- node[above, font=\footnotesize] {Signed Creds} (merkle);
+\draw[arrow, line width=1.2pt, draw=blue!70!black] (merkle) -- node[right, font=\footnotesize\bfseries, align=left] {\texttt{anchorBatch(root)}\\ (1 tx per batch)} (credReg);
+\draw[darrow] (issuerReg) -- node[above, font=\footnotesize] {\texttt{onlySigner} cross-check} (credReg);
+
+\end{tikzpicture}
+\caption{Architectural Overview of Phase 3 (EIP-712 Trust Anchor)}
+\label{fig:phase3-architecture}
+\end{figure}
+
+\subsection{Architectural Advancements over Phase 2}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.5cm}|p{5.2cm}|p{5.5cm}|}
+\hline
+\textbf{Component} & \textbf{Phase 2 (SD-JWT)} & \textbf{Phase 3 (EIP-712 Trust Anchor)} \\
+\hline
+Smart Contracts & Monolithic \texttt{CertificateRegistry} & Decoupled \texttt{IssuerRegistry} and \texttt{CredentialRegistryV3} \\
+\hline
+Signing Layer & Backend ES256K signer & Modular TypeScript EIP-712 SDK (\texttt{ethers.js} v6) \\
+\hline
+Storage Reliance & Mandatory IPFS pinning per credential & Local/JSON credential files (IPFS optional) \\
+\hline
+Asset Model & ERC-721 NFT per student & Pure cryptographic attestation (No token overhead) \\
+\hline
+Access Control & Role-based AccessControl & \texttt{Ownable2Step} + cross-contract \texttt{isSigner} validation \\
+\hline
+\end{tabular}
+\caption{Architectural Evolution: Phase 2 vs. Phase 3}
+\label{tab:arch-changes}
+\end{table}
+
+\section{EIP-712 Credential Schema Design}
+
+\subsection{BkCredential Type Definitions}
+
+The EIP-712 type definition consists of a nested schema structure:
+
+\begin{lstlisting}[language=Solidity]
+struct PublicClaims {
+    string vct;              // Verifiable Credential Type, e.g. "BKISC_DEGREE"
+    string degreeTitle;      // e.g. "Bachelor of Computer Science"
+    string graduationDate;   // ISO-8601: "2026-06-15"
+    string honors;           // "High Distinction" | "Distinction" | ""
+}
+
+struct BkCredential {
+    string         credId;         // URN UUID v4
+    uint64         issuedAt;       // Unix timestamp in seconds
+    string         batchId;        // e.g. "GRAD-2026-01"
+    PublicClaims   publicClaims;   // Nested structured claims
+    bytes32[]      privateClaims;  // Array of 32-byte salted commitments
+    bytes32        merkleRoot;     // Batch Merkle root anchored on-chain
+}
+\end{lstlisting}
+
+\subsection{Public and Private Claims Separation}
+
+\begin{itemize}
+    \item \textbf{PublicClaims}: Encapsulates verifiable public achievements that require no disclosure restrictions (\texttt{vct}, \texttt{degreeTitle}, \texttt{graduationDate}, \texttt{honors}).
+    \item \textbf{PrivateClaims}: An array of \texttt{bytes32} hashes representing private individual claims (e.g., student name, ID, GPA, date of birth) protected by 256-bit salted commitments:
+\end{itemize}
+
+\begin{lstlisting}
+privateClaims = [
+    keccak256(salt_1 || "fullName"  || "Tran Le Cong Minh"),
+    keccak256(salt_2 || "studentId" || "1910347"),
+    keccak256(salt_3 || "dob"       || "2001-08-12")
+]
+\end{lstlisting}
+
+\subsection{Credential File Format}
+
+The canonical output file distributed to the holder is a structured JSON document containing: context identifier (\texttt{@context}), credential type, UUID, timestamp, issuer metadata, public claims, private claim commitments, Merkle proof path and index, 65-byte EIP-712 signature, and disclosure objects.
+
+\section{Smart Contract Architecture}
+
+\subsection{IssuerRegistry.sol}
+
+\textbf{Responsibility}: Maintains the registry of authorized university signing keys permitted to issue credentials and anchor batches.
+
+\textbf{Design Characteristics}:
+\begin{itemize}
+    \item Inherits OpenZeppelin \texttt{Ownable2Step}~\cite{OZContracts} for two-phase administrative ownership transfer.
+    \item Maps active signer states (\texttt{isSigner}) and optional decentralized identifiers (\texttt{did}).
+    \item Provides paginated read functions (\texttt{getSigners}, \texttt{getAllSigners}, \texttt{getSignerCount}) for external auditing and verifiers.
+\end{itemize}
+
+\textbf{Core Interface}:
+\begin{itemize}
+    \item \texttt{addSigner(address signer, bytes didLabel)}: Registers an authorized signing address.
+    \item \texttt{revokeSigner(address signer)}: Revokes signing permissions. Previously anchored batches remain cryptographically valid.
+    \item \texttt{isSigner(address) $\rightarrow$ bool}: View helper invoked by \texttt{CredentialRegistryV3}.
+\end{itemize}
+
+\subsection{CredentialRegistryV3.sol}
+
+\textbf{Responsibility}: Serves as the primary Trust Anchor on Ethereum, persisting batch Merkle roots and managing high-efficiency bitmap revocations.
+
+\textbf{Design Characteristics}:
+\begin{itemize}
+    \item Implements \texttt{Ownable2Step} and \texttt{Pausable} for emergency state-freezing during key compromise.
+    \item Holds an immutable reference to \texttt{IssuerRegistry} to enforce access control.
+    \item Uses storage-optimized bitmap revocation mapping: \texttt{mapping(bytes32 $\rightarrow$ mapping(uint256 $\rightarrow$ uint256))}.
+\end{itemize}
+
+\textbf{Core Interface}:
+\begin{itemize}
+    \item \texttt{anchorBatch(merkleRoot, size, ipfsCid)}: Commits a batch Merkle root to blockchain state ($\sim$105,000 gas).
+    \item \texttt{revoke(merkleRoot, index)}: Sets the revocation bit for a single credential ($\sim$56,000 gas).
+    \item \texttt{revokeBatch(merkleRoot, indices[])}: Batch revocation within the same storage word ($\sim$90,000 gas for 4 items).
+    \item \texttt{isRevoked(merkleRoot, index) $\rightarrow$ bool}: View function for status verification.
+    \item \texttt{getAnchor(merkleRoot)}: Fetches batch timestamp, issuer address, and cohort size.
+\end{itemize}
+
+\subsection{Gas Consumption Comparison}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{4.8cm}|p{3.4cm}|p{3.8cm}|p{2.6cm}|}
+\hline
+\textbf{Operational Task} & \textbf{Phase 2 (ERC-721)} & \textbf{Phase 3 (Trust Anchor)} & \textbf{Optimization} \\
+\hline
+Individual Credential Issuance & $\sim$103,156 gas & 0 gas (Off-chain typed sign) & 100\% (Zero gas) \\
+\hline
+Batch Root Anchoring ($N$ creds) & $N \times \sim$103,156 gas & $\sim$105,000 gas (1 tx total) & $\sim N\times$ reduction \\
+\hline
+Single Revocation (Cold Slot) & $\sim$45,000 gas & $\sim$56,000 gas (Initial word) & Comparable \\
+\hline
+Subsequent Revocation (Warm Slot) & $\sim$45,000 gas & $\sim$5,000 gas (Bitmap flip) & $\sim$9$\times$ reduction \\
+\hline
+Batch Revocation (4 in same word) & $\sim$180,000 gas & $\sim$90,000 gas total & $\sim$50\% reduction \\
+\hline
+Status Verification (\texttt{eth\_call}) & 0 gas (View function) & 0 gas (View function) & Free (0 gas) \\
+\hline
+Amortized Cost per Credential ($N=10,000$) & $\sim$103,156 gas/cred & $\sim$10.5 gas/cred & \textbf{$\sim$9,800$\times$} \\
+\hline
+Total Cohort Gas ($N=10,000$) & $\sim$1,031,560,000 gas & $\sim$105,000 gas total & \textbf{$\sim$9,800$\times$} \\
+\hline
+\end{tabular}
+\caption{Comprehensive Smart Contract Gas Consumption Profile: Phase 2 vs. Phase 3}
+\label{tab:gas-comparison}
+\end{table}
+
+\section{EIP-712 SDK Architecture}
+
+The SDK is organized into 6 modular TypeScript packages:
+
+\subsection{Domain and Type Builder (\texttt{domain.ts})}
+Constructs standardized EIP-712 Domain Separators, enforces strict checksummed Ethereum address formats, and exports strongly-typed schema interfaces.
+
+\subsection{Signer and Verifier Modules (\texttt{signer.ts}, \texttt{verifier.ts})}
+\begin{itemize}
+    \item \textbf{\texttt{signer.ts}}: Generates 65-byte ($r, s, v$) cryptographic signatures using \texttt{wallet.signTypedData()} and recovers public signer addresses via \texttt{ethers.verifyTypedData()}.
+    \item \textbf{\texttt{verifier.ts}}: Executes the canonical \textbf{10-Step Verification Pipeline} detailed in Table~\ref{tab:verify-pipeline}.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|>{\centering\arraybackslash}p{0.8cm}|>{\centering\arraybackslash}p{1.5cm}|>{\RaggedRight}p{7.2cm}|>{\RaggedRight}p{4.5cm}|}
+\hline
+\textbf{\#} & \textbf{Scope} & \textbf{Verification Target \& Method} & \textbf{Error Code} \\
+\hline
+1 & Offline & Structural integrity and type validation via runtime Zod schema parser & \texttt{INVALID\_SCHEMA} \\
+\hline
+2 & Offline & Recompute \texttt{publicClaimsHash} struct hash via EIP-712 \texttt{hashStruct()} & Internal check (Pass) \\
+\hline
+3 & Offline & Verify selective disclosures: $\text{keccak256}(\text{salt} \parallel \text{key} \parallel \text{val}) \in \texttt{privateClaims[]}$ & \texttt{DISCLOSURE\_MISMATCH} \\
+\hline
+4 & Offline & Recompute double-hashed Merkle leaf: $\text{keccak256}(\text{keccak256}(\text{encode}(\text{id}, H_{\text{pub}}, H_{\text{priv}})))$ & \texttt{LEAF\_MISMATCH} \\
+\hline
+5 & Offline & Validate cryptographic Merkle proof inclusion path against \texttt{merkle.root} & \texttt{INVALID\_MERKLE\_PROOF} \\
+\hline
+6 & Offline & Recover signer address via \texttt{verifyTypedData()} and assert against \texttt{issuer.signer} & \texttt{SIGNATURE\_MISMATCH} \\
+\hline
+7 & Online & Query \texttt{IssuerRegistry} on-chain via \texttt{isSigner(recoveredAddress)} & \texttt{SIGNER\_NOT\_REGISTERED} \\
+\hline
+8 & Online & Query \texttt{CredentialRegistryV3} via \texttt{getAnchor(root)} ($\texttt{anchoredAt} > 0$) & \texttt{BATCH\_NOT\_ANCHORED} \\
+\hline
+9 & Online & Query \texttt{CredentialRegistryV3} via \texttt{isRevoked(root, index)} bitmap check & \texttt{CREDENTIAL\_REVOKED} \\
+\hline
+10 & Offline & Evaluate expiration temporal constraint against Unix timestamp ($\texttt{now} \le \texttt{exp}$) & \texttt{CREDENTIAL\_EXPIRED} \\
+\hline
+\end{tabular}
+\caption{The Canonical 10-Step Verification Pipeline Specification}
+\label{tab:verify-pipeline}
+\end{table}
+
+Setting \texttt{skipOnlineChecks: true} enables offline mode, running Steps 1--6 and Step 10 without blockchain RPC requests.
+
+\subsection{Selective Disclosure and Merkle Utilities (\texttt{disclosure.ts}, \texttt{merkle.ts})}
+\begin{itemize}
+    \item \textbf{\texttt{disclosure.ts}}: Manages salt generation, salted commitment computation, and selective disclosure filtering for holder presentations.
+    \item \textbf{\texttt{merkle.ts}}: Builds OpenZeppelin-compatible Merkle Trees and extracts cryptographic membership proof paths.
+\end{itemize}
+
+\section{System Workflow Pipelines}
+
+\subsection{Issuance Workflow (8 Steps)}
+\begin{enumerate}
+    \item \textbf{CSV Ingestion}: Registrar uploads graduate batch dataset.
+    \item \textbf{Validation}: Parser performs runtime type and constraint checking using Zod.
+    \item \textbf{UUID Generation}: Generates unique URN identifiers (\texttt{urn:uuid:...}).
+    \item \textbf{Commitment Creation}: Generates 256-bit salts and calculates private claim commitments.
+    \item \textbf{EIP-712 Signing}: Signs structured payloads with the issuer's private key.
+    \item \textbf{Tree Construction}: Builds the Merkle Tree and attaches individual membership proofs.
+    \item \textbf{On-Chain Anchoring}: Submits \texttt{anchorBatch(merkleRoot, size, ipfsCid)} to Sepolia.
+    \item \textbf{Persistence}: Stores batch and credential records in PostgreSQL via Prisma.
+\end{enumerate}
+
+\subsection{Verification Workflow}
+Executed in three distinct stages: Offline structural verification (Steps 1--6), Online blockchain state attestation (Steps 7--9), and temporal expiration validation (Step 10).
+
+\subsection{Revocation Workflow}
+Admin triggers revocation on \texttt{CredentialRegistryV3}, updating the corresponding bit in the on-chain bitmap and synchronizing the status to the off-chain database.
+
+\section{Database Schema Modeling (Prisma ORM)}
+
+The Phase 3 schema defines four normalized relational entities:
+\begin{itemize}
+    \item \textbf{\texttt{BatchV3}}: Persists batch identifiers, anchored Merkle roots, cohort sizes, transaction hashes, and on-chain timestamps.
+    \item \textbf{\texttt{CredentialV3}}: Stores individual credential UUIDs, batch indices, public claims, EIP-712 signatures, Merkle proof paths, and serialized JSON documents.
+    \item \textbf{\texttt{DisclosureV3}}: Records individual salted attribute components (\texttt{salt}, \texttt{key}, \texttt{value}, \texttt{commitment}) mapped 1-to-many from \texttt{CredentialV3}.
+    \item \textbf{\texttt{RevocationV3}}: Maintains an immutable audit trail of revocation events mirroring the on-chain state.
+\end{itemize}
+
+Schema tables use the \texttt{\_v3} suffix, enabling seamless coexistence with Phase 2 data without schema migrations or conflicts.

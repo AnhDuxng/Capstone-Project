@@ -1,0 +1,90 @@
+\chapter{Cơ sở hình thành định hướng nghiên cứu}
+
+Trong giai đoạn đầu của luận văn, nhóm không tiếp tục mở rộng trực tiếp mô hình \textit{blockchain-native} đã được xây dựng trong đồ án chuyên ngành, mà chuyển hướng sang nghiên cứu và thiết kế lại hệ thống theo mô hình \textit{Hybrid -- Blockchain làm Trust Anchor cho Verifiable Credentials}. Quyết định này không chỉ xuất phát từ nhu cầu mở rộng về mặt học thuật, mà còn đến từ yêu cầu đánh giá lại tính khả thi của hệ thống nếu muốn tiến gần hơn tới một kịch bản triển khai thực tế (ví dụ như trong môi trường đại học). \cite{nakamoto2008bitcoin}
+
+\section{Giới hạn của cách tiếp cận blockchain-native}
+
+Ở giai đoạn trước, hệ thống của nhóm được xây dựng theo tư duy \textit{blockchain-native}: chứng chỉ được biểu diễn dưới dạng NFT hoặc Soulbound Token, metadata được lưu trữ trên IPFS, còn smart contract chịu trách nhiệm lưu \texttt{tokenURI}, \texttt{metadataHash}, thông tin \textit{issuer} và trạng thái \texttt{revoked}. Cách tiếp cận này có nhiều ưu điểm trong giai đoạn nghiên cứu và nguyên mẫu, đặc biệt là:
+\begin{itemize}
+    \item dễ minh hoạ tính bất biến của dữ liệu trên blockchain;
+    \item dễ chứng minh cơ chế chống sửa đổi thông qua việc đối chiếu \texttt{metadataHash};
+    \item dễ xây dựng cổng xác minh công khai, trong đó bất kỳ ai cũng có thể tra cứu trạng thái chứng chỉ;
+    \item phù hợp để hiện thực nhanh một hệ thống minh hoạ cho mục tiêu đồ án.
+\end{itemize}
+
+Tuy nhiên, khi đánh giá lại dưới góc nhìn triển khai thực tế ở quy mô trường đại học, mô hình này bộc lộ một số giới hạn quan trọng.
+
+Thứ nhất, \textbf{chi phí và hiệu năng} là vấn đề cần được cân nhắc. Trong mô hình blockchain-native, mỗi chứng chỉ thường tương ứng với một đối tượng on-chain riêng biệt (NFT/SBT), đồng nghĩa với việc mỗi lần cấp phát hoặc cập nhật trạng thái đều cần một giao dịch blockchain. Điều này có thể chấp nhận được ở quy mô nhỏ hoặc trên testnet, nhưng trở thành một điểm yếu nếu hệ thống phải xử lý khối lượng chứng chỉ lớn theo từng đợt tốt nghiệp, chương trình đào tạo ngắn hạn hoặc cấp phát cho nhiều khoa, nhiều đơn vị cùng lúc.
+
+Thứ hai, \textbf{mô hình token chưa hẳn là biểu diễn phù hợp nhất cho chứng chỉ học thuật}. Về bản chất, một văn bằng hoặc chứng chỉ là một \textit{tuyên bố có xác nhận} từ phía cơ sở đào tạo về việc một cá nhân đã đạt được một thành tựu hoặc hoàn thành một chương trình học tập nhất định. Nếu biểu diễn chứng chỉ trực tiếp như một token, hệ thống có thể trở nên thiên về tư duy ``tài sản số'', trong khi về mặt nghiệp vụ, chứng chỉ học thuật phù hợp hơn với mô hình ``credential'' hoặc ``attestation'' có chữ ký số.
+
+Thứ ba, \textbf{bài toán danh tính và quyền sở hữu} vẫn chưa được giải quyết đầy đủ trong mô hình cũ. Khi verifier chỉ quét QR hoặc nhập tokenId, hệ thống có thể xác minh rằng một chứng chỉ tồn tại, chưa bị thu hồi, và gắn với một địa chỉ ví nhất định. Tuy nhiên, điều đó chưa đủ để chứng minh rằng người đang trình bày chứng chỉ thực sự là chủ sở hữu hợp pháp. Nói cách khác, mô hình cũ làm tốt phần \textit{validity verification} nhưng chưa giải quyết trọn vẹn phần \textit{ownership proof}.
+
+Thứ tư, \textbf{mô hình blockchain-native chưa tiệm cận các chuẩn quốc tế đang được quan tâm trong lĩnh vực định danh số và chứng chỉ số}. Trong các hệ sinh thái hiện đại như EBSI hoặc các hệ thống dựa trên chuẩn W3C, chứng chỉ số thường không được hiểu đơn thuần là một token, mà được biểu diễn dưới dạng \textit{Verifiable Credential} có chữ ký số, trong đó blockchain chỉ đóng vai trò hỗ trợ về trust registry, revocation hoặc anchoring.
+
+Chính từ những giới hạn này, nhóm nhận thấy cần có một bước chuyển hướng để hệ thống không chỉ dừng lại ở mức minh hoạ tính năng blockchain, mà có thể trở thành một kiến trúc có tính khả thi và dễ mở rộng hơn trong môi trường thực tế.
+
+\section{Cơ sở lý thuyết cho hướng tiếp cận Hybrid}
+
+Về mặt lý thuyết, định hướng Hybrid được xây dựng dựa trên nguyên tắc phân tách giữa:
+\begin{itemize}
+    \item \textbf{phần dữ liệu cốt lõi cần tin cậy công khai} như danh sách issuer hợp lệ, trạng thái thu hồi hoặc bằng chứng toàn vẹn;
+    \item và \textbf{phần dữ liệu nghiệp vụ của chứng chỉ} như thông tin chương trình học, thông tin người học, mô tả thành tựu, minh chứng kèm theo.
+\end{itemize}
+
+Sự phân tách này tương ứng với mô hình \textit{on-chain registry -- off-chain credential}, vốn cũng là một hướng phát triển tự nhiên từ kiến trúc \textit{on-chain registry -- off-chain metadata} mà nhóm đã nghiên cứu trước đó. \cite{ipfs_whitepaper}
+
+Trong mô hình Hybrid mới, blockchain không còn giữ vai trò là nơi lưu toàn bộ ``đối tượng chứng chỉ'', mà trở thành lớp \textit{trust anchor}. Có thể hiểu đơn giản, blockchain được dùng để lưu những thông tin nhỏ nhưng quan trọng, đủ để hỗ trợ xác minh độc lập:
+\begin{itemize}
+    \item issuer nào là hợp lệ;
+    \item chứng chỉ còn hiệu lực hay đã bị thu hồi;
+    \item hash hoặc anchor nào đại diện cho tính toàn vẹn của chứng chỉ.
+\end{itemize}
+
+Trong khi đó, chứng chỉ thực tế được biểu diễn dưới dạng \textit{Verifiable Credential} và được phát hành, ký số, lưu trữ và trình bày off-chain. Đây là cách tiếp cận phù hợp hơn với bản chất nghiệp vụ của chứng chỉ học thuật: một chứng chỉ là một \textit{tài liệu có xác nhận} do đơn vị cấp phát ban hành, chứ không nhất thiết phải là một token tồn tại độc lập trên blockchain.
+
+Về mặt lý thuyết, hướng này cho phép kết hợp đồng thời các ưu điểm của hai thế giới:
+\begin{itemize}
+    \item từ blockchain: tính bất biến, minh bạch, khả năng kiểm chứng công khai và cơ chế chống sửa đổi;
+    \item từ mô hình credential off-chain: tính linh hoạt, khả năng chuẩn hoá dữ liệu, giảm chi phí on-chain và bảo vệ tốt hơn dữ liệu nhạy cảm.
+\end{itemize}
+
+Nói cách khác, blockchain được sử dụng đúng ở phần mà nó mạnh nhất: \textit{xây dựng nguồn chân lý tối thiểu nhưng đáng tin cậy}, thay vì ép toàn bộ bài toán chứng chỉ số phải chạy hoàn toàn trên chuỗi.
+
+\section{Cơ sở thực tiễn cho việc chuyển hướng}
+
+Ngoài lý do học thuật, hướng tiếp cận Hybrid còn được lựa chọn vì phù hợp hơn với bối cảnh triển khai thực tế trong trường đại học.
+
+Trước hết, \textbf{khối lượng chứng chỉ phát hành trong môi trường giáo dục có thể rất lớn}. Nếu mỗi đợt tốt nghiệp, mỗi khoá học ngắn hạn, mỗi chương trình cấp chứng nhận đều tương ứng với một lượng lớn giao dịch on-chain, thì chi phí vận hành và độ phức tạp của hệ thống sẽ tăng nhanh. Trong khi đó, nếu blockchain chỉ lưu \textit{trust anchor} còn chứng chỉ được phát hành dưới dạng VC, số lượng giao dịch on-chain có thể giảm đáng kể.
+
+Thứ hai, \textbf{yêu cầu về quyền riêng tư} là một yếu tố quan trọng. Chứng chỉ học tập thường gắn với các dữ liệu cá nhân như họ tên, mã số sinh viên, chương trình đào tạo hoặc kết quả học tập. Dù hệ thống trước đó đã tránh lưu trực tiếp PII trên blockchain, nhưng tư duy token-centric vẫn khiến việc mở rộng về sau phải cân nhắc rất kỹ cơ chế quản lý dữ liệu. Trong khi đó, với VC, dữ liệu có thể được tổ chức theo hướng linh hoạt hơn, dễ tích hợp mã hoá hoặc selective disclosure trong tương lai.
+
+Thứ ba, \textbf{vấn đề liên thông và chuẩn hoá} là rất đáng quan tâm nếu xét đến khả năng triển khai giữa nhiều đơn vị đào tạo. Một hệ thống dựa trên VC, DID và trust anchor có nhiều cơ hội hội nhập hơn với các chuẩn đang được nghiên cứu và áp dụng trên thế giới, thay vì dừng ở một mô hình token nội bộ khó mở rộng ra ngoài phạm vi hệ thống ban đầu.
+
+Cuối cùng, \textbf{mô hình Hybrid mang lại một lộ trình nâng cấp hợp lý}. Thay vì phải thay toàn bộ hệ thống cũ, nhóm có thể tận dụng các kinh nghiệm và thành phần đã có:
+\begin{itemize}
+    \item kinh nghiệm triển khai smart contract registry;
+    \item kinh nghiệm lưu dữ liệu off-chain thông qua IPFS;
+    \item kinh nghiệm xây dựng verify portal và dashboard;
+    \item hiểu biết sẵn có về issuer, holder, verifier và trạng thái revocation.
+\end{itemize}
+
+Điều thay đổi quan trọng nhất là dịch chuyển trọng tâm của hệ thống: từ ``token là chứng chỉ'' sang ``VC là chứng chỉ, blockchain là nơi neo tin cậy''.
+
+\section{Từ blockchain-native đến Hybrid: một bước tiến về mặt học thuật và thực tiễn}
+
+Từ các phân tích trên, nhóm xác định rằng hướng nghiên cứu trong giai đoạn luận văn không nên chỉ dừng lại ở việc ``làm cho hệ thống cũ lớn hơn'', mà cần nâng cấp kiến trúc theo một hướng có chiều sâu hơn. Mô hình Hybrid -- Blockchain làm Trust Anchor cho Verifiable Credentials được lựa chọn vì đáp ứng đồng thời ba yêu cầu:
+
+\begin{enumerate}
+    \item \textbf{Yêu cầu học thuật}: cho phép luận văn tiếp cận các khái niệm hiện đại hơn như VC, DID, ownership proof và trust anchor.
+    \item \textbf{Yêu cầu kỹ thuật}: giảm phụ thuộc vào việc lưu trữ và xử lý on-chain, từ đó giảm chi phí và tăng hiệu suất.
+    \item \textbf{Yêu cầu thực tiễn}: phù hợp hơn với môi trường trường đại học, nơi cần một hệ thống có thể mở rộng, bảo vệ dữ liệu cá nhân và có khả năng tích hợp với các hệ thống hiện hữu.
+\end{enumerate}
+
+Chính vì vậy, toàn bộ kế hoạch 15 tuần của giai đoạn luận văn được xây dựng theo định hướng này: nghiên cứu chuẩn VC và DID, thiết kế lại kiến trúc Hybrid, hiện thực issuer service, trust anchor on-chain, verify portal và cơ chế ownership proof, sau đó tiến hành kiểm thử, đánh giá và hoàn thiện báo cáo.
+
+\section{Kết luận của giai đoạn định hướng}
+
+Sau quá trình rà soát mô hình cũ, nghiên cứu lý thuyết và xem xét tính khả thi trong thực tiễn, nhóm kết luận rằng việc chuyển từ mô hình blockchain-native sang Hybrid là một bước đi hợp lý và cần thiết. Giai đoạn 7 tuần đầu vì thế không chỉ là giai đoạn ``nghiên cứu bổ sung'', mà thực chất là giai đoạn \textbf{định hình lại nền tảng học thuật và kiến trúc hệ thống} cho toàn bộ luận văn.
+
+Kết quả của giai đoạn này là cơ sở để nhóm tiếp tục bước sang các phần hiện thực kỹ thuật ở giai đoạn sau, bao gồm thiết kế dữ liệu VC, cơ chế ký chứng chỉ, trust anchor on-chain, verify flow và ownership proof.

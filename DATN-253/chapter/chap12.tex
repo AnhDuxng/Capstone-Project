@@ -1,0 +1,548 @@
+\chapter{Báo cáo tiến độ giữa kỳ}
+
+\section{Tổng quan}
+
+Trong 7 tuần đầu của giai đoạn luận văn, nhóm tập trung chuyển hướng nghiên cứu và phát triển hệ thống từ mô hình \textit{blockchain-native} sang mô hình \textit{Hybrid}, trong đó blockchain chỉ đóng vai trò \textit{trust anchor} cho chứng chỉ số theo chuẩn \textit{W3C Verifiable Credentials (VC)}. Mục tiêu của giai đoạn này là xây dựng nền tảng lý thuyết vững chắc, thiết kế lại kiến trúc hệ thống phù hợp hơn với triển khai thực tế, đồng thời bước đầu hiện thực các thành phần cốt lõi phục vụ cho quy trình phát hành và xác minh chứng chỉ theo hướng mới.
+
+Khác với giai đoạn đồ án trước, nơi token trên blockchain được xem như đối tượng chứng chỉ chính, hệ thống hiện tại được phát triển theo tư duy \textit{credential-centric}: chứng chỉ được biểu diễn dưới dạng một credential có chữ ký số, còn blockchain được sử dụng để lưu các thông tin tối thiểu nhưng đủ tạo niềm tin công khai, như danh sách issuer hợp lệ, trạng thái thu hồi hoặc anchor/hash phục vụ kiểm tra toàn vẹn. Cách tiếp cận này được lựa chọn nhằm giảm chi phí vận hành, cải thiện khả năng mở rộng, tăng tính phù hợp với môi trường đại học và tiệm cận hơn với các chuẩn đang được sử dụng trong các hệ sinh thái định danh số hiện đại.
+
+\section{Cơ sở hình thành định hướng nghiên cứu}
+
+\subsection{Giới hạn của mô hình blockchain-native}
+
+Trong hệ thống ở giai đoạn trước, chứng chỉ được phát hành dưới dạng NFT hoặc Soulbound Token, metadata được lưu trên IPFS, còn smart contract lưu các thông tin như \texttt{tokenURI}, \texttt{metadataHash}, \texttt{issuer} và trạng thái \texttt{revoked}. Cách tiếp cận này có ưu điểm là dễ minh hoạ tính bất biến, dễ chứng minh khả năng chống sửa đổi và dễ xây dựng cổng xác minh công khai. Tuy nhiên, khi được xem xét dưới góc nhìn triển khai thực tế ở quy mô trường đại học, mô hình này bộc lộ một số hạn chế.
+
+Thứ nhất, chi phí on-chain có thể tăng nhanh khi số lượng chứng chỉ lớn, do mỗi chứng chỉ thường gắn với một thực thể hoặc giao dịch riêng. Điều này phù hợp với nguyên mẫu học thuật, nhưng chưa tối ưu cho bối cảnh phát hành số lượng lớn theo từng đợt tốt nghiệp hoặc theo nhiều chương trình đào tạo song song.
+
+Thứ hai, mô hình token-centric chưa phản ánh đầy đủ bản chất của chứng chỉ học thuật. Một chứng chỉ số về bản chất là một \textit{attestation} hoặc \textit{credential}, tức là một tuyên bố có xác nhận từ phía cơ sở đào tạo đối với người học, chứ không nhất thiết phải là một tài sản số được biểu diễn trực tiếp thành token.
+
+Thứ ba, mô hình cũ giải quyết tốt bài toán \textit{validity verification} nhưng chưa giải quyết triệt để bài toán \textit{ownership proof}. Verifier có thể biết chứng chỉ tồn tại và chưa bị thu hồi, nhưng chưa thể biết chắc người đang trình chứng chỉ có thực sự là chủ sở hữu hợp pháp hay không.
+
+Thứ tư, mô hình blockchain-native chưa tiệm cận các chuẩn hiện đại như W3C Verifiable Credentials, DID hoặc các kiến trúc trust registry đang được áp dụng trong nhiều hệ sinh thái định danh số và chứng chỉ số trên thế giới.
+
+Từ những giới hạn này, nhóm quyết định chuyển hướng nghiên cứu sang mô hình Hybrid, trong đó blockchain chỉ làm trust anchor cho credential.
+
+\subsection{Cơ sở lý thuyết cho hướng tiếp cận Hybrid}
+
+Định hướng Hybrid được xây dựng dựa trên nguyên tắc phân tách giữa:
+\begin{itemize}
+    \item phần dữ liệu cốt lõi cần được tin cậy công khai như issuer hợp lệ, trạng thái thu hồi và bằng chứng toàn vẹn;
+    \item và phần dữ liệu nghiệp vụ của chứng chỉ như thông tin học tập, mô tả thành tựu và dữ liệu nhận diện của holder.
+\end{itemize}
+
+Trong kiến trúc này, blockchain không còn giữ vai trò là nơi lưu trực tiếp từng chứng chỉ, mà trở thành lớp \textit{trust anchor}. Điều đó có nghĩa là blockchain chỉ lưu các dữ liệu nhỏ nhưng quan trọng, đủ để verifier có thể kiểm tra độc lập:
+\begin{itemize}
+    \item issuer nào là hợp lệ;
+    \item credential còn hiệu lực hay đã bị thu hồi;
+    \item và anchor/hash nào đại diện cho tính toàn vẹn của credential.
+\end{itemize}
+
+Phần còn lại của chứng chỉ được lưu và xử lý dưới dạng Verifiable Credential ở tầng off-chain, có chữ ký số của issuer. Cách tiếp cận này giúp kết hợp các ưu điểm của blockchain với sự linh hoạt của mô hình credential chuẩn hoá.
+
+\subsection{Cơ sở thực tiễn cho việc chuyển hướng}
+
+Ngoài giá trị học thuật, mô hình Hybrid còn phù hợp hơn với bối cảnh triển khai thực tế trong trường đại học.
+
+Thứ nhất, mô hình này giúp giảm số lượng dữ liệu và thao tác phải đưa lên blockchain, từ đó giảm chi phí và độ phức tạp vận hành.
+
+Thứ hai, dữ liệu của chứng chỉ học tập thường gắn với thông tin cá nhân hoặc dữ liệu nhạy cảm. Việc tách phần dữ liệu nghiệp vụ ra khỏi blockchain giúp hệ thống dễ dàng bảo vệ dữ liệu hơn, đồng thời mở đường cho các cơ chế như selective disclosure hoặc mã hoá trong tương lai.
+
+Thứ ba, mô hình dựa trên VC và trust anchor có khả năng chuẩn hoá và liên thông tốt hơn so với mô hình token-centric, từ đó phù hợp hơn với định hướng dài hạn của một hệ thống chứng chỉ số triển khai trong môi trường giáo dục.
+
+\section{Nghiên cứu nền tảng: VC, DID và Ownership Proof}
+
+\subsection{W3C Verifiable Credentials}
+
+\textit{Verifiable Credential} là một chuẩn của W3C cho phép biểu diễn các loại chứng nhận số dưới dạng dữ liệu có thể kiểm chứng được. VC phản ánh tốt bản chất của chứng chỉ học thuật vì nó là một tài liệu số có chữ ký số của đơn vị cấp phát, thay vì một thực thể token trên blockchain.
+
+Một VC thường gồm các thành phần:
+\begin{itemize}
+    \item \texttt{@context} và \texttt{type};
+    \item \texttt{issuer};
+    \item \texttt{credentialSubject};
+    \item \texttt{issuanceDate};
+    \item \texttt{credentialStatus};
+    \item \texttt{proof}.
+\end{itemize}
+
+Nhóm lựa chọn nghiên cứu và hiện thực VC vì mô hình này:
+\begin{itemize}
+    \item phản ánh đúng bản chất của chứng chỉ học thuật;
+    \item giảm sự phụ thuộc vào blockchain;
+    \item cho phép chuẩn hoá quy trình phát hành và verify;
+    \item tiệm cận các chuẩn quốc tế về danh tính số.
+\end{itemize}
+
+\subsection{Decentralized Identifier (DID)}
+
+\textit{Decentralized Identifier} là một chuẩn định danh số phi tập trung, giúp định danh issuer và holder theo cách độc lập hơn so với mô hình tài khoản tập trung. DID thường gắn với một \textit{DID Document}, trong đó chứa các public key và phương thức xác thực phục vụ cho việc verify.
+
+Trong hệ thống mới:
+\begin{itemize}
+    \item issuer có thể được định danh bằng DID để verifier biết khóa công khai nào dùng cho việc kiểm tra chữ ký;
+    \item holder có thể gắn với một DID hoặc một định danh tương đương nhằm hỗ trợ ownership proof trong tương lai.
+\end{itemize}
+
+Trong phạm vi giữa kỳ, DID chủ yếu đóng vai trò nền tảng lý thuyết và mô hình hoá kiến trúc, trong khi việc hiện thực ownership proof được xem là hướng triển khai tối thiểu khả thi hơn trong nửa sau của luận văn.
+
+\subsection{Ownership Proof}
+
+Ownership proof là cơ chế giúp holder chứng minh rằng mình thực sự kiểm soát định danh hoặc private key gắn với chứng chỉ. Đây là phần quan trọng vì việc verify một credential hợp lệ chưa đồng nghĩa với việc người đang trình credential chính là người được cấp.
+
+Nhóm xác định đây là một bài toán riêng biệt so với verify chữ ký của issuer. Trong hệ thống mới, ownership proof sẽ được hiện thực theo cơ chế challenge--response ở giai đoạn tiếp theo, nhằm bổ sung lớp xác minh còn thiếu so với mô hình blockchain-native cũ.
+
+\section{Thiết kế lại kiến trúc hệ thống theo hướng Hybrid}
+
+\subsection{Kiến trúc tổng thể}
+
+Sau khi rà soát lại hệ thống của đồ án trước, nhóm thiết kế lại kiến trúc theo hướng Hybrid với ba lớp chính:
+
+\begin{itemize}
+    \item \textbf{Credential Layer}: nơi phát hành, lưu trữ và trình bày Verifiable Credential;
+    \item \textbf{Trust Anchor Layer}: blockchain chỉ lưu issuer registry, trạng thái revoke/status và anchor/hash;
+    \item \textbf{Application Layer}: gồm các thành phần Issuer Service, Holder Portal và Verifier Portal.
+\end{itemize}
+
+Điểm thay đổi cốt lõi nằm ở việc chuyển trọng tâm từ:
+\begin{center}
+\textit{token là chứng chỉ}
+\end{center}
+sang:
+\begin{center}
+\textit{VC là chứng chỉ, blockchain là nơi neo tin cậy}
+\end{center}
+
+\subsection{Mô hình dữ liệu ban đầu}
+
+Từ góc nhìn dữ liệu, nhóm thiết kế chứng chỉ số trong hệ thống mới với các nhóm dữ liệu:
+\begin{itemize}
+    \item định danh credential;
+    \item thông tin issuer;
+    \item thông tin holder / credential subject;
+    \item dữ liệu học thuật;
+    \item trạng thái revoke/status;
+    \item proof.
+\end{itemize}
+
+Nhóm cũng phân tách lại dữ liệu:
+\begin{itemize}
+    \item \textbf{off-chain}: nội dung đầy đủ của credential và các dữ liệu nghiệp vụ;
+    \item \textbf{on-chain}: issuer registry, revocation status và anchor/hash.
+\end{itemize}
+
+\section{Hiện thực bước đầu trong 7 tuần đầu}
+
+Sau khi chốt được hướng kiến trúc Hybrid, nhóm bắt đầu hiện thực các thành phần kỹ thuật cốt lõi nhằm kiểm chứng tính khả thi của hệ thống mới. Trong phạm vi 7 tuần đầu, các nội dung được ưu tiên gồm:
+\begin{itemize}
+    \item mô hình dữ liệu cho VC;
+    \item issuer service dùng để sinh credential;
+    \item signing và verify logic ở mức nguyên mẫu;
+    \item trust anchor on-chain ở mức contract tối giản;
+    \item API phát hành và xác minh bước đầu.
+\end{itemize}
+
+\subsection{Định hướng hiện thực và lý do lựa chọn}
+
+Nhóm lựa chọn hiện thực theo hướng:
+\begin{itemize}
+    \item \textbf{credential format}: JWT-VC;
+    \item \textbf{ký số}: Ed25519/EdDSA;
+    \item \textbf{backend}: Node.js/TypeScript;
+    \item \textbf{trust anchor on-chain}: issuer registry và credential status registry.
+\end{itemize}
+
+Việc chọn JWT-VC thay vì JSON-LD VC đầy đủ giúp nhóm hiện thực nhanh hơn một pipeline có thể kiểm chứng được, trong khi vẫn giữ đúng tinh thần của mô hình Hybrid. Đây là lựa chọn phù hợp với mục tiêu giữa kỳ: chứng minh tính khả thi của hướng tiếp cận mới thay vì xây dựng ngay một hệ thống production-ready.
+
+\subsection{Hiện thực mô hình dữ liệu Verifiable Credential}
+
+Nhóm đã hiện thực mô hình dữ liệu cơ sở cho credential dưới dạng các kiểu dữ liệu TypeScript. Các kiểu dữ liệu này mô tả rõ:
+\begin{itemize}
+    \item issuer;
+    \item credential subject;
+    \item issuance date;
+    \item credential status;
+    \item cấu trúc payload dùng cho JWT-VC.
+\end{itemize}
+
+Ví dụ đoạn mã sau thể hiện cấu trúc dữ liệu cơ bản của một credential:
+
+\begin{lstlisting}[caption={Mô hình dữ liệu cho Verifiable Credential}, label={lst:vc_types_midterm}]
+export interface CredentialSubject {
+  id: string;
+  name: string;
+  program: string;
+  achievement: string;
+}
+
+export interface VerifiableCredentialPayload {
+  "@context": string[];
+  type: string[];
+  issuer: string;
+  issuanceDate: string;
+  expirationDate?: string;
+  credentialSubject: CredentialSubject;
+  credentialStatus?: {
+    id: string;
+    type: string;
+  };
+}
+
+export interface JwtVcPayload {
+  iss: string;
+  sub: string;
+  nbf: number;
+  exp?: number;
+  jti: string;
+  vc: VerifiableCredentialPayload;
+}
+\end{lstlisting}
+
+Việc hiện thực được mô hình dữ liệu này cho thấy hệ thống đã chuyển thành công từ tư duy metadata gắn với token sang tư duy credential độc lập.
+
+\subsection{Hiện thực bước đầu Issuer Service}
+
+Nhóm đã hiện thực một nguyên mẫu của issuer service, cho phép nhận dữ liệu đầu vào và sinh ra credential ở dạng JWT-VC payload.
+
+Đoạn mã sau minh hoạ hàm sinh credential từ dữ liệu đầu vào:
+
+\begin{lstlisting}[caption={Hàm sinh credential ở mức nguyên mẫu}, label={lst:build_credential_midterm}]
+import { randomUUID } from "crypto";
+import { JwtVcPayload, VerifiableCredentialPayload } from "../types/vc";
+
+interface BuildVcInput {
+  issuerDid: string;
+  holderDid: string;
+  holderName: string;
+  program: string;
+  achievement: string;
+  statusId?: string;
+  expiresAt?: Date;
+}
+
+export function buildCredential(input: BuildVcInput): JwtVcPayload {
+  const issuanceDate = new Date();
+  const exp = input.expiresAt
+    ? Math.floor(input.expiresAt.getTime() / 1000)
+    : undefined;
+
+  const vc: VerifiableCredentialPayload = {
+    "@context": [
+      "https://www.w3.org/2018/credentials/v1"
+    ],
+    type: ["VerifiableCredential", "AcademicCertificate"],
+    issuer: input.issuerDid,
+    issuanceDate: issuanceDate.toISOString(),
+    credentialSubject: {
+      id: input.holderDid,
+      name: input.holderName,
+      program: input.program,
+      achievement: input.achievement
+    },
+    ...(input.statusId
+      ? {
+          credentialStatus: {
+            id: input.statusId,
+            type: "CredentialStatus"
+          }
+        }
+      : {})
+  };
+
+  return {
+    iss: input.issuerDid,
+    sub: input.holderDid,
+    nbf: Math.floor(issuanceDate.getTime() / 1000),
+    exp,
+    jti: `urn:uuid:${randomUUID()}`,
+    vc
+  };
+}
+\end{lstlisting}
+
+Thành phần này hiện đã đạt được vai trò nguyên mẫu cho bước phát hành credential, dù chưa tích hợp hoàn chỉnh với toàn bộ pipeline phát hành đến holder.
+
+\subsection{Hiện thực bước đầu cơ chế ký số và verify credential}
+
+Nhóm đã hiện thực được logic ký số cho credential ở mức JWT-VC bằng EdDSA. Điều này có ý nghĩa quan trọng vì ở mô hình mới, verifier phải tin vào chữ ký của issuer thay vì chỉ dựa vào trạng thái on-chain như mô hình cũ.
+
+Ví dụ hàm ký JWT-VC:
+
+\begin{lstlisting}[caption={Hàm ký JWT-VC bằng khóa issuer}, label={lst:sign_vc_midterm}]
+import { SignJWT, importPKCS8 } from "jose";
+import { JwtVcPayload } from "../types/vc";
+
+export async function signVcJwt(
+  payload: JwtVcPayload,
+  issuerPrivateKeyPem: string
+): Promise<string> {
+  const privateKey = await importPKCS8(issuerPrivateKeyPem, "EdDSA");
+
+  const jwt = await new SignJWT({ vc: payload.vc })
+    .setProtectedHeader({ alg: "EdDSA", typ: "JWT" })
+    .setIssuer(payload.iss)
+    .setSubject(payload.sub)
+    .setJti(payload.jti)
+    .setNotBefore(payload.nbf)
+    .setIssuedAt()
+    .setExpirationTime(payload.exp ?? "30d")
+    .sign(privateKey);
+
+  return jwt;
+}
+\end{lstlisting}
+
+Ví dụ hàm verify JWT-VC:
+
+\begin{lstlisting}[caption={Hàm verify JWT-VC bằng khóa công khai}, label={lst:verify_vc_midterm}]
+import { jwtVerify, importSPKI, decodeJwt } from "jose";
+
+export async function verifyVcJwt(
+  jwt: string,
+  issuerPublicKeyPem: string
+) {
+  const publicKey = await importSPKI(issuerPublicKeyPem, "EdDSA");
+
+  const result = await jwtVerify(jwt, publicKey, {
+    algorithms: ["EdDSA"]
+  });
+
+  return result.payload;
+}
+
+export function decodeVcJwt(jwt: string) {
+  return decodeJwt(jwt);
+}
+\end{lstlisting}
+
+Các đoạn mã này cho thấy hệ thống đã bước đầu hiện thực được lớp verify cốt lõi của mô hình Hybrid: credential có thể được ký và về mặt kỹ thuật có thể được verifier kiểm tra độc lập.
+
+\subsection{Hiện thực bước đầu hash/anchor flow}
+
+Để blockchain có thể đóng vai trò trust anchor, nhóm đã xây dựng bước đầu cơ chế hash cho credential, dùng làm đại diện gọn phục vụ đối chiếu hoặc neo dữ liệu.
+
+Ví dụ:
+
+\begin{lstlisting}[caption={Hàm tạo hash cho credential}, label={lst:hash_vc_midterm}]
+import { createHash } from "crypto";
+
+export function hashVcJwt(vcJwt: string): string {
+  return createHash("sha256").update(vcJwt).digest("hex");
+}
+\end{lstlisting}
+
+Dù còn đơn giản, bước này là nền tảng để liên kết credential off-chain với trust anchor on-chain trong giai đoạn tiếp theo.
+
+\subsection{Hiện thực bước đầu Trust Anchor on-chain}
+
+Trong mô hình mới, blockchain không còn lưu trực tiếp chứng chỉ, mà chỉ giữ các thông tin tối thiểu để verifier có thể tạo niềm tin công khai. Nhóm đã hiện thực bước đầu hai contract nguyên mẫu:
+
+\begin{itemize}
+    \item \textbf{IssuerRegistry}: quản lý issuer hợp lệ;
+    \item \textbf{CredentialStatusRegistry}: quản lý trạng thái revoke của credential.
+\end{itemize}
+
+Ví dụ skeleton của \texttt{IssuerRegistry}:
+
+\begin{lstlisting}[caption={Prototype cho Issuer Registry}, label={lst:issuer_registry_midterm}]
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract IssuerRegistry is Ownable {
+    mapping(address => bool) public validIssuers;
+    mapping(address => string) public issuerDid;
+
+    event IssuerAdded(address indexed issuer, string did);
+    event IssuerRemoved(address indexed issuer);
+
+    constructor(address initialOwner) Ownable(initialOwner) {}
+
+    function addIssuer(address issuer, string calldata did) external onlyOwner {
+        validIssuers[issuer] = true;
+        issuerDid[issuer] = did;
+        emit IssuerAdded(issuer, did);
+    }
+
+    function removeIssuer(address issuer) external onlyOwner {
+        validIssuers[issuer] = false;
+        emit IssuerRemoved(issuer);
+    }
+
+    function isValidIssuer(address issuer) external view returns (bool) {
+        return validIssuers[issuer];
+    }
+}
+\end{lstlisting}
+
+Ví dụ skeleton của \texttt{CredentialStatusRegistry}:
+
+\begin{lstlisting}[caption={Prototype cho Credential Status Registry}, label={lst:status_registry_midterm}]
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+contract CredentialStatusRegistry is Ownable {
+    struct CredentialStatus {
+        bool revoked;
+        uint256 revokedAt;
+        string reason;
+    }
+
+    mapping(bytes32 => CredentialStatus) private statuses;
+
+    event CredentialRevoked(bytes32 indexed credentialHash, uint256 revokedAt, string reason);
+
+    constructor(address initialOwner) Ownable(initialOwner) {}
+
+    function revokeCredential(bytes32 credentialHash, string calldata reason) external onlyOwner {
+        statuses[credentialHash] = CredentialStatus({
+            revoked: true,
+            revokedAt: block.timestamp,
+            reason: reason
+        });
+
+        emit CredentialRevoked(credentialHash, block.timestamp, reason);
+    }
+
+    function getCredentialStatus(bytes32 credentialHash)
+        external
+        view
+        returns (bool revoked, uint256 revokedAt, string memory reason)
+    {
+        CredentialStatus memory status = statuses[credentialHash];
+        return (status.revoked, status.revokedAt, status.reason);
+    }
+}
+\end{lstlisting}
+
+Các contract này là minh chứng rõ ràng cho việc blockchain trong hệ thống mới đã được thu gọn đúng vai trò của một trust anchor.
+
+\subsection{Hiện thực bước đầu API phát hành và xác minh}
+
+Nhóm cũng đã phác thảo và bước đầu hiện thực các API cơ bản để kết nối issuer service và verify logic.
+
+Ví dụ API phát hành credential:
+
+\begin{lstlisting}[caption={Route phát hành credential}, label={lst:issue_route_midterm}]
+router.post("/issue-vc", async (req, res) => {
+  try {
+    const { holderDid, holderName, program, achievement, statusId } = req.body;
+
+    const payload = buildCredential({
+      issuerDid: ISSUER_DID,
+      holderDid,
+      holderName,
+      program,
+      achievement,
+      statusId
+    });
+
+    const jwt = await signVcJwt(payload, ISSUER_PRIVATE_KEY);
+
+    return res.json({
+      success: true,
+      credentialId: payload.jti,
+      vcJwt: jwt,
+      vcPayload: payload
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to issue VC"
+    });
+  }
+});
+\end{lstlisting}
+
+Ví dụ API verify credential:
+
+\begin{lstlisting}[caption={Route verify credential}, label={lst:verify_route_midterm}]
+router.post("/verify-vc", async (req, res) => {
+  try {
+    const { vcJwt } = req.body;
+    const verified = await verifyVcJwt(vcJwt, ISSUER_PUBLIC_KEY);
+
+    return res.json({
+      success: true,
+      verified
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid VC"
+    });
+  }
+});
+\end{lstlisting}
+
+Dù mới ở mức nguyên mẫu, các API này cho thấy hệ thống đã bắt đầu kết nối được các thành phần chính thành một luồng kỹ thuật nhất quán.
+
+\section{Đánh giá kết quả đạt được sau 7 tuần}
+
+\subsection{Mức độ hoàn thành so với kế hoạch}
+
+Sau 7 tuần đầu, nhóm đã hoàn thành phần lớn các hạng mục mang tính nền tảng:
+\begin{itemize}
+    \item đánh giá lại hệ thống blockchain-native cũ;
+    \item nghiên cứu VC, DID và ownership proof;
+    \item thiết kế lại kiến trúc hệ thống theo hướng Hybrid;
+    \item chuẩn hoá mô hình dữ liệu cho credential;
+    \item hiện thực bước đầu issuer service;
+    \item hiện thực bước đầu signing, verify, hash/anchor flow;
+    \item hiện thực bước đầu trust anchor on-chain.
+\end{itemize}
+
+Một số phần vẫn đang ở mức thiết kế hoặc nguyên mẫu:
+\begin{itemize}
+    \item verify portal hoàn chỉnh;
+    \item ownership proof end-to-end;
+    \item tích hợp đầy đủ giữa verifier flow và trust anchor;
+    \item benchmark và kiểm thử tích hợp.
+\end{itemize}
+
+Nhóm đánh giá tiến độ này là phù hợp với kế hoạch ban đầu, vì 7 tuần đầu được dành chủ yếu cho việc xây nền tảng lý thuyết, kiến trúc và nguyên mẫu kỹ thuật.
+
+\subsection{Những khó khăn gặp phải}
+
+Các khó khăn chính trong 7 tuần đầu gồm:
+\begin{itemize}
+    \item chuyển đổi tư duy kiến trúc từ token-centric sang credential-centric;
+    \item tài liệu về VC và DID phân tán và có nhiều hướng hiện thực khác nhau;
+    \item khó cân bằng giữa chiều sâu nghiên cứu và tốc độ hiện thực;
+    \item bài toán ownership proof phức tạp hơn dự kiến.
+\end{itemize}
+
+Tuy nhiên, nhóm đánh giá rằng việc giải quyết được các khó khăn này ngay trong nửa đầu luận văn là rất cần thiết, vì nó giúp tránh việc hiện thực sai hướng trong giai đoạn sau.
+
+\subsection{Đánh giá tổng thể tiến độ giữa kỳ}
+
+Nhìn tổng thể, nhóm đánh giá rằng sau 7 tuần đầu, luận văn đã hoàn thành mục tiêu quan trọng nhất của giai đoạn giữa kỳ: \textbf{xây dựng xong nền tảng học thuật, chốt lại kiến trúc mới và hiện thực được các nguyên mẫu kỹ thuật đầu tiên}.
+
+Các kết quả hiện tại cho thấy rằng:
+\begin{itemize}
+    \item hướng Hybrid là khả thi về mặt hiện thực;
+    \item việc chuyển từ blockchain-native sang trust anchor không chỉ là ý tưởng mà đã có biểu hiện cụ thể trong code;
+    \item hệ thống có đủ nền tảng để bước sang giai đoạn triển khai sâu hơn.
+\end{itemize}
+
+\section{Kế hoạch triển khai cho giai đoạn tiếp theo}
+
+Từ những gì đã hoàn thành trong 7 tuần đầu, nhóm xác định giai đoạn tiếp theo sẽ tập trung vào:
+\begin{itemize}
+    \item hoàn thiện pipeline ký và phát hành VC;
+    \item tích hợp trust anchor on-chain với verify flow;
+    \item xây dựng verifier portal theo mô hình mới;
+    \item hiện thực ownership proof theo cơ chế challenge--response;
+    \item thực hiện kiểm thử, benchmark và đánh giá hệ thống.
+\end{itemize}
+
+Trình tự triển khai tiếp theo được lựa chọn theo logic phụ thuộc:
+\begin{center}
+\textit{Issuer Service} $\rightarrow$ \textit{Signing/Verify} $\rightarrow$ \textit{Trust Anchor} $\rightarrow$ \textit{Verifier Flow} $\rightarrow$ \textit{Ownership Proof} $\rightarrow$ \textit{Đánh giá}
+\end{center}
+
+\section{Kết luận}
+
+Bảy tuần đầu của giai đoạn luận văn là giai đoạn quan trọng giúp nhóm xây dựng lại nền tảng lý thuyết và kiến trúc cho hệ thống theo một hướng phù hợp hơn với triển khai thực tế. Thay vì tiếp tục mở rộng mô hình blockchain-native, nhóm đã lựa chọn hướng Hybrid với blockchain làm trust anchor cho Verifiable Credentials, qua đó tăng tính khả thi, giảm chi phí vận hành và mở ra khả năng tiệm cận các chuẩn quốc tế.
+
+Quan trọng hơn, các kết quả giữa kỳ cho thấy hệ thống không chỉ dừng ở mức ý tưởng lý thuyết, mà đã bắt đầu hình thành các thành phần kỹ thuật cụ thể như VC schema, issuer service, signing logic, hash/anchor flow, trust anchor contracts và API nguyên mẫu. Đây là nền tảng trực tiếp để nhóm tiếp tục hoàn thiện hệ thống và đánh giá giá trị của mô hình Hybrid trong nửa sau của luận văn.

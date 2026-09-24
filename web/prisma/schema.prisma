@@ -1,0 +1,137 @@
+// ─────────────────────────────────────────────────────────────
+// BK Credential System — Phase 3 Prisma Schema
+// ─────────────────────────────────────────────────────────────
+// Models for EIP-712 credential management:
+//   - BatchV3:       graduation batch metadata + Merkle root
+//   - CredentialV3:  individual credential with EIP-712 signature
+//   - RevocationV3:  revocation log (on-chain bitmap mirrored)
+//   - DisclosureV3:  private claim disclosures (salt + key + value)
+//
+// Phase 2 models (if any) are NOT included here — they remain
+// in their original location to avoid breaking the existing demo.
+// ─────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── BatchV3 ────────────────────────────────────────────────
+// Represents a graduation batch anchored on-chain.
+// One batch = one Merkle root = one `anchorBatch` transaction.
+
+model BatchV3 {
+  id          String   @id @default(cuid())
+  batchId     String   @unique              // e.g. "GRAD-2026-01"
+  merkleRoot  String   @unique              // bytes32 hex, anchored on-chain
+  size        Int                           // number of credentials in batch
+  ipfsCid     String?                       // optional IPFS CID for batch metadata
+  issuerAddr  String                        // signer Ethereum address (0x...)
+  txHash      String?                       // anchorBatch transaction hash
+  chainId     Int      @default(11155111)   // 11155111 = Sepolia
+  anchoredAt  DateTime?                     // when confirmed on-chain
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  credentials CredentialV3[]
+
+  @@index([issuerAddr])
+  @@index([anchoredAt])
+  @@map("batches_v3")
+}
+
+// ─── CredentialV3 ───────────────────────────────────────────
+// Individual credential with EIP-712 typed signature.
+// Stores the full credential JSON + Merkle proof for holder retrieval.
+
+model CredentialV3 {
+  id             String   @id @default(cuid())
+  credId         String   @unique              // urn:uuid:... (unique across all batches)
+  batchId        String                        // FK → BatchV3.batchId
+  batchIndex     Int                           // index within the batch (for bitmap revocation)
+
+  // ── Holder identity ─────────────────────────────────────
+  holderEmail    String?                       // for magic link login
+  studentId      String                        // MSSV
+
+  // ── Public claims (stored denormalized for querying) ────
+  vct            String                        // "BKISC_DEGREE"
+  degreeTitle    String
+  graduationDate String                        // ISO-8601
+  honors         String   @default("")
+
+  // ── EIP-712 signature ───────────────────────────────────
+  signature      String                        // 65 bytes hex (r || s || v)
+
+  // ── Merkle proof ────────────────────────────────────────
+  merkleLeaf     String                        // bytes32 hex
+  merkleProof    String[]                      // array of bytes32 hex
+
+  // ── Private claims ──────────────────────────────────────
+  privateClaims  String[]                      // bytes32[] commitments (hex)
+
+  // ── Full credential JSON (for download) ─────────────────
+  credentialJson String                        // complete JSON with signature
+
+  // ── Status ──────────────────────────────────────────────
+  isRevoked      Boolean  @default(false)      // mirrors on-chain bitmap
+  revokedAt      DateTime?
+  issuedAt       DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  batch          BatchV3       @relation(fields: [batchId], references: [batchId])
+  disclosures    DisclosureV3[]
+  revocation     RevocationV3?
+
+  @@unique([batchId, batchIndex])             // unique within a batch
+  @@index([studentId])
+  @@index([holderEmail])
+  @@index([isRevoked])
+  @@map("credentials_v3")
+}
+
+// ─── DisclosureV3 ───────────────────────────────────────────
+// Stores the salt + key + value for each private claim.
+// Holder selects which disclosures to include when presenting.
+
+model DisclosureV3 {
+  id           String @id @default(cuid())
+  credentialId String                         // FK → CredentialV3.id
+  salt         String                         // bytes32 hex
+  key          String                         // field name: "fullName", "studentId", "dob"
+  value        String                         // field value
+  commitment   String                         // keccak256(salt || key || value) — bytes32 hex
+
+  // Relations
+  credential   CredentialV3 @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+
+  @@unique([credentialId, key])               // one disclosure per key per credential
+  @@index([credentialId])
+  @@map("disclosures_v3")
+}
+
+// ─── RevocationV3 ───────────────────────────────────────────
+// Revocation log — mirrors the on-chain bitmap revocation.
+// Tracks who revoked and when, for audit trail.
+
+model RevocationV3 {
+  id           String   @id @default(cuid())
+  credentialId String   @unique              // FK → CredentialV3.id (1:1)
+  merkleRoot   String                        // batch Merkle root
+  batchIndex   Int                           // index within batch
+  revokedBy    String                        // signer address who revoked
+  txHash       String?                       // revoke() transaction hash
+  revokedAt    DateTime @default(now())
+
+  // Relations
+  credential   CredentialV3 @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+
+  @@index([merkleRoot])
+  @@map("revocations_v3")
+}

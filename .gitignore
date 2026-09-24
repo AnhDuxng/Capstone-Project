@@ -1,0 +1,41 @@
+# IDE & Editor files
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & Secrets (CRITICAL: NEVER COMMIT REAL SECRETS)
+.env
+.env.*
+!.env.example
+*.pem
+
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Hardhat build & cache
+contracts/cache/
+contracts/artifacts/
+contracts/typechain-types/
+
+# Generated fixtures
+contracts/fixtures/
+
+# Old local drafts
+DACN_251/

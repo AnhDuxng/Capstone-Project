@@ -1,0 +1,49 @@
+sequenceDiagram
+    autonumber
+    participant Holder as Holder (Sinh viên)
+    participant HolderPortal as Holder Portal
+    participant Verifier as Verifier (Nhà tuyển dụng)
+    participant VerifyPortal as Verify Portal
+    participant SDK as EIP-712 SDK
+    participant RPC as Ethereum RPC
+    participant Registry as CredentialRegistry
+    participant IssuerReg as IssuerRegistry
+
+    Note over Holder,IssuerReg: Bước 1: Holder chọnSelective Disclosure
+    Holder->>HolderPortal: Đăng nhập (magic link)
+    HolderPortal-->>Holder: Danh sách credentials
+    Holder->>HolderPortal: Mở credential "Bằng Kỹ sư CS"
+    HolderPortal->>Holder: Toggle: hiển thị [fullName, studentId], ẩn [dob, address]
+    Holder->>HolderPortal: Tải file credential (chỉ kèm disclosures đã chọn)
+    HolderPortal-->>Holder: credential-sd.json
+
+    Note over Holder,IssuerReg: Bước 2: Holder chia sẻ credential
+    Holder->>Verifier: Gửi file credential-sd.json + QR code
+
+    Note over Holder,IssuerReg: Bước 3: Verifier xác minh TRUSTLESS (OFFLINE-CAPABLE)
+    Verifier->>VerifyPortal: Upload credential-sd.json
+    VerifyPortal->>SDK: verifyCredential(file, opts)
+
+    Note right of SDK: OFFLINE STEPS (không cần network)
+    SDK->>SDK: 1. Parse JSON + validate schema (zod)
+    SDK->>SDK: 2. Recompute publicClaimsHash
+    SDK->>SDK: 3. Verify disclosures → so khớp privateClaims[]
+    SDK->>SDK: 4. Recompute merkleLeaf
+    SDK->>SDK: 5. Verify Merkle proof → root
+    SDK->>SDK: 6. ecrecoverTypedData(sig) → issuer.signer
+
+    Note right of SDK: ONLINE STEPS (2 RPC calls)
+    SDK->>RPC: 7. isSigner(issuer.signer)
+    RPC->>IssuerReg: eth_call
+    IssuerReg-->>RPC: true
+    RPC-->>SDK: ✓ signer valid
+    SDK->>RPC: 8. anchors[merkleRoot] + isRevoked(index)
+    RPC->>Registry: eth_call multicall
+    Registry-->>RPC: { anchoredAt: 1750000000, revoked: false }
+    RPC-->>SDK: ✓ anchored + not revoked
+
+    SDK-->>VerifyPortal: VerificationResult { isValid: true, checks: [...] }
+    VerifyPortal-->>Verifier: ✓ Credential HỢP LỆ
+    Verifier->>Verifier: Xem chi tiết: fullName=Tran Le Cong Minh,<br/>degree=Ky su KHMT, honors=Gioi
+
+    Note over Holder,IssuerReg: Toàn bộ quá trình ~200-300ms, không phụ thuộc backend HCMUT

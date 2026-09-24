@@ -1,0 +1,392 @@
+% Chapter 4: System Implementation — Mid-Term Report Phase 3
+
+\chapter{System Implementation}
+
+\section{Development Environment and Toolchain}
+
+\subsection{Hardhat and Solidity 0.8.24}
+
+The smart contract layer is developed and tested using the Hardhat framework and Solidity version 0.8.24 (upgraded from 0.8.20 in Phase 2):
+\begin{itemize}
+    \item \textbf{Solidity \textasciicircum 0.8.24}: Smart contract compiler featuring built-in checked arithmetic to prevent integer overflow/underflow vulnerabilities.
+    \item \textbf{Hardhat}: Local test network runner, deployment automation, and Sepolia testnet bridge.
+    \item \textbf{OpenZeppelin Contracts v5.x}: Secure implementations of \texttt{Ownable2Step} and \texttt{Pausable}.
+    \item \textbf{@openzeppelin/merkle-tree}: Production-grade JavaScript/TypeScript library for Merkle tree generation and verification.
+    \item \textbf{hardhat-gas-reporter} \& \textbf{solidity-coverage}: Automated tooling for profiling transaction gas consumption and tracking unit test code coverage.
+\end{itemize}
+
+\subsection{Next.js 14 and TypeScript}
+
+The web application and API layer are constructed using modern full-stack web technologies:
+\begin{itemize}
+    \item \textbf{Next.js 14 (App Router)}: Server-side rendering, API route handlers, and optimized component hydration.
+    \item \textbf{TypeScript 5.x}: End-to-end type safety spanning smart contract ABIs, SDK libraries, and client UI components.
+    \item \textbf{Prisma ORM (v6)}: Type-safe database client communicating with a PostgreSQL instance on Neon Serverless.
+    \item \textbf{Privy Authentication}: Passwordless authentication infrastructure enabling seamless email-based magic link login for student credential holders.
+\end{itemize}
+
+\section{Smart Contract Implementation}
+
+\subsection{IssuerRegistry.sol}
+
+The \texttt{IssuerRegistry.sol} contract governs authorized signing addresses and their optional decentralized identifier (DID) bindings:
+
+\begin{lstlisting}[language=Solidity]
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
+
+contract IssuerRegistry is Ownable2Step {
+    mapping(address => bool) public isSigner;
+    mapping(address => bytes) public did;
+    address[] private _signers;
+    mapping(address => uint256) private _signerIndices;
+
+    event SignerAdded(address indexed signer, bytes did);
+    event SignerRevoked(address indexed signer);
+    event SignerDidUpdated(address indexed signer, bytes newDid);
+
+    error ZeroAddress();
+    error AlreadySigner(address signer);
+    error NotSigner(address signer);
+    error InvalidPagination();
+
+    constructor(address initialOwner) Ownable(initialOwner) {
+        if (initialOwner == address(0)) revert ZeroAddress();
+    }
+
+    function addSigner(address signer, bytes calldata didLabel) 
+        external onlyOwner 
+    {
+        if (signer == address(0)) revert ZeroAddress();
+        if (isSigner[signer]) revert AlreadySigner(signer);
+
+        isSigner[signer] = true;
+        did[signer] = didLabel;
+
+        if (_signerIndices[signer] == 0) {
+            _signers.push(signer);
+            _signerIndices[signer] = _signers.length;
+        }
+
+        emit SignerAdded(signer, didLabel);
+    }
+
+    function revokeSigner(address signer) external onlyOwner {
+        if (!isSigner[signer]) revert NotSigner(signer);
+        isSigner[signer] = false;
+        emit SignerRevoked(signer);
+    }
+}
+\end{lstlisting}
+
+\subsection{CredentialRegistryV3.sol}
+
+The \texttt{CredentialRegistryV3.sol} contract functions as the on-chain Trust Anchor, maintaining batch root commitments and managing revocation bit arrays:
+
+\begin{lstlisting}[language=Solidity]
+contract CredentialRegistryV3 is Ownable2Step, Pausable {
+    struct BatchAnchor {
+        uint64 anchoredAt;
+        address issuer;
+        uint32 size;
+        string ipfsCid;
+    }
+
+    IssuerRegistry public immutable issuerRegistry;
+    mapping(bytes32 => BatchAnchor) public anchors;
+    mapping(uint32 => bytes32) public batchRoots;
+    mapping(bytes32 => mapping(uint256 => uint256)) private _revocationBitmap;
+    uint32 public nextBatchIndex;
+
+    modifier onlySigner() {
+        if (!issuerRegistry.isSigner(msg.sender)) {
+            revert NotActiveSigner(msg.sender);
+        }
+        _;
+    }
+
+    function anchorBatch(
+        bytes32 merkleRoot,
+        uint32 size,
+        string calldata ipfsCid
+    ) external whenNotPaused onlySigner returns (uint32 batchIndex) {
+        if (merkleRoot == bytes32(0)) revert ZeroMerkleRoot();
+        if (size == 0) revert ZeroBatchSize();
+        if (anchors[merkleRoot].anchoredAt != 0) {
+            revert BatchAlreadyAnchored(merkleRoot);
+        }
+
+        batchIndex = nextBatchIndex++;
+        anchors[merkleRoot] = BatchAnchor({
+            anchoredAt: uint64(block.timestamp),
+            issuer: msg.sender,
+            size: size,
+            ipfsCid: ipfsCid
+        });
+        batchRoots[batchIndex] = merkleRoot;
+
+        emit BatchAnchored(merkleRoot, msg.sender, batchIndex, size, uint64(block.timestamp));
+    }
+
+    function revoke(bytes32 merkleRoot, uint32 index) 
+        external whenNotPaused onlySigner 
+    {
+        BatchAnchor storage anchor = anchors[merkleRoot];
+        if (anchor.anchoredAt == 0) revert BatchNotFound(merkleRoot);
+        if (index >= anchor.size) revert IndexOutOfRange(index, anchor.size);
+        if (msg.sender != anchor.issuer) revert NotOriginalIssuer(msg.sender, anchor.issuer);
+
+        _revokeInternal(merkleRoot, index);
+        emit CredentialRevoked(merkleRoot, index, msg.sender);
+    }
+}
+\end{lstlisting}
+
+\subsection{Deployment Pipeline and Configuration Manifest}
+
+Contract deployment is automated via the \texttt{deploy-v3.ts} script. Upon deployment to Ethereum Sepolia, all deployed addresses, network parameters, and initialization timestamps are serialized into \texttt{deployments-v3.json}, providing a single source of truth for the SDK and frontend clients.
+
+\section{EIP-712 SDK Implementation}
+
+\subsection{Core Modules: domain.ts, signer.ts, and verifier.ts}
+
+\begin{itemize}
+    \item \textbf{\texttt{domain.ts}}: Configures domain parameters, standardizes checksummed address formats, and exports EIP-712 type definition mappings. It constructs the canonical EIP-712 Domain Separator using the schema name (\texttt{"BkCredential"}), version (\texttt{"3.0"}), chain identifier (\texttt{chainId}), and the deployed address of \texttt{CredentialRegistryV3}.
+    \item \textbf{\texttt{signer.ts}}: Encapsulates \texttt{signCredential()} using \texttt{wallet.signTypedData()}, serializing inputs into standard 65-byte hex signatures (\texttt{0x...r,s,v}). Provides \texttt{recoverSignerAddress()} to extract the public signing address from a signature and payload via ECDSA public key recovery.
+    \item \textbf{\texttt{verifier.ts}}: Implements the complete 10-step verification algorithm. Combines schema parsing, recursive struct hashing, Merkle proof evaluation, signature verification, and on-chain RPC contract assertions. It supports both full online verification and gasless offline verification modes.
+\end{itemize}
+
+\subsection{Supporting Modules: disclosure.ts and merkle.ts}
+
+\begin{itemize}
+    \item \textbf{\texttt{disclosure.ts}}: Exposes helpers for generating 256-bit cryptographically secure pseudorandom salts, calculating salted \texttt{keccak256} commitment hashes (\texttt{createDisclosure}), verifying commitments against revealed plaintexts (\texttt{verifyDisclosure}), and filtering selective claims (\texttt{filterDisclosures}) for selective disclosure presentations.
+    \item \textbf{\texttt{merkle.ts}}: Builds standard cryptographic Merkle Trees from credential payloads using OpenZeppelin's \texttt{StandardMerkleTree}. It implements double-hashing ($\text{keccak256}(\text{keccak256}(\text{abi.encode}(\dots)))$) to prevent second-preimage vulnerabilities and generates compact sibling proof arrays for each credential leaf in $\mathcal{O}(\log N)$ time.
+\end{itemize}
+
+\subsection{High-Throughput Bulk Issuance Engine (\texttt{bulk.ts})}
+
+To process large cohorts (such as an entire graduating class of 10,000 students) without exhausting Node.js heap memory or triggering transaction timeouts, the system incorporates a specialized bulk processing engine in \texttt{bulk.ts}:
+
+\begin{itemize}
+    \item \textbf{Chunked Processing Pipeline}: The 10,000-credential batch is automatically partitioned into manageable sub-batches (e.g., $20 \times 500$ records). Each chunk undergoes independent salt generation, commitment derivation, and typed structured data signing.
+    \item \textbf{Memory Optimization}: Intermediate JSON objects are garbage-collected chunk by chunk, keeping memory footprint well within bounded limits ($<$350~MB heap) even under extreme 50,000-credential workloads.
+    \item \textbf{Streaming Progress Updates}: The engine emits fine-grained lifecycle events after every chunk, enabling real-time progress reporting back to the calling process and web frontend.
+\end{itemize}
+
+\section{Full-Stack Web Portals Implementation}
+
+The user-facing platform is implemented as a modern full-stack web application built on Next.js 14 App Router, providing four specialized, role-tailored portals:
+
+\begin{figure}[H]
+\centering
+\resizebox{0.98\textwidth}{!}{
+\begin{tikzpicture}[
+    user/.style={draw=blue!70!black, fill=blue!10, rounded corners=4pt, thick, align=center, font=\small\bfseries, inner sep=6pt, text width=3.2cm, minimum height=1.1cm},
+    portal/.style={draw=teal!80!black, fill=teal!5, rounded corners=4pt, thick, align=center, inner sep=6pt, text width=3.2cm, minimum height=3.5cm},
+    backend/.style={draw=purple!80!black, fill=purple!8, rounded corners=4pt, thick, align=center, font=\small, inner sep=7pt, text width=6.6cm, minimum height=1.4cm},
+    arrow/.style={-{Stealth[scale=1.0]}, thick, draw=black!75},
+    darrow/.style={{Stealth[scale=1.0]}-{Stealth[scale=1.0]}, thick, draw=purple!80!black, dashed}
+]
+
+% Users Row
+\node[user] (u1) at (0, 0) {University Registrar\\(Issuer)};
+\node[user] (u2) at (4.0, 0) {Student Graduate\\(Holder)};
+\node[user] (u3) at (8.0, 0) {Employer / Verifier\\(Third Party)};
+\node[user] (u4) at (12.0, 0) {System Auditor\\(Admin)};
+
+% Portals Row (Unified Cards)
+\node[portal] (p1) at (0, -2.9) {
+    \textbf{\normalsize Issuer Portal}\\[2pt]
+    \textcolor{teal!70!black}{\texttt{\footnotesize /admin/v3/batches}}\\[6pt]
+    \RaggedRight\scriptsize
+    $\bullet$ CSV Batch Ingestion\\
+    $\bullet$ Zod Schema Validation\\
+    $\bullet$ Real-Time SSE Stepper\\
+    $\bullet$ Web3 \texttt{anchorBatch()}
+};
+
+\node[portal] (p2) at (4.0, -2.9) {
+    \textbf{\normalsize Holder Portal}\\[2pt]
+    \textcolor{teal!70!black}{\texttt{\footnotesize /holder/portal}}\\[6pt]
+    \RaggedRight\scriptsize
+    $\bullet$ Privy Passwordless Login\\
+    $\bullet$ Degree Credentials Vault\\
+    $\bullet$ Selective Claim Toggles\\
+    $\bullet$ JSON Presentation Export
+};
+
+\node[portal] (p3) at (8.0, -2.9) {
+    \textbf{\normalsize Verifier Portal}\\[2pt]
+    \textcolor{teal!70!black}{\texttt{\footnotesize /v3/verify}}\\[6pt]
+    \RaggedRight\scriptsize
+    $\bullet$ Drag-and-drop JSON Input\\
+    $\bullet$ URL Deep-link Lookup\\
+    $\bullet$ 10-Step Interactive Stepper\\
+    $\bullet$ Live Sepolia Attestation
+};
+
+\node[portal] (p4) at (12.0, -2.9) {
+    \textbf{\normalsize Admin Panel}\\[2pt]
+    \textcolor{teal!70!black}{\texttt{\footnotesize /admin/v3/signers}}\\[6pt]
+    \RaggedRight\scriptsize
+    $\bullet$ Institutional Signers Key\\
+    $\bullet$ DID Label Management\\
+    $\bullet$ Bitmap Batch Revocation\\
+    $\bullet$ Emergency Pause Control
+};
+
+% Connectors Users -> Portals
+\draw[arrow] (u1) -- (p1);
+\draw[arrow] (u2) -- (p2);
+\draw[arrow] (u3) -- (p3);
+\draw[arrow] (u4) -- (p4);
+
+% Infrastructure Layer (Bottom)
+\node[backend] (contracts) at (2.0, -5.8) {
+    \textbf{Smart Contracts Trust Anchor (Ethereum Sepolia)}\\[3pt]
+    \texttt{\footnotesize IssuerRegistry.sol} \quad \& \quad \texttt{\footnotesize CredentialRegistryV3.sol}
+};
+
+\node[backend, fill=orange!8, draw=orange!80!black] (database) at (10.0, -5.8) {
+    \textbf{Persistent Database Layer (Neon Serverless)}\\[3pt]
+    Prisma ORM: \texttt{\footnotesize BatchV3}, \texttt{\footnotesize CredentialV3}, \texttt{\footnotesize DisclosureV3}
+};
+
+% Connections Portals -> Infrastructure
+\draw[arrow, draw=teal!80!black] (p1.south) -- (p1.south |- contracts.north);
+\draw[arrow, draw=teal!80!black] (p2.south) -- (p2.south |- contracts.north);
+\draw[arrow, draw=teal!80!black] (p3.south) -- (p3.south |- database.north);
+\draw[arrow, draw=teal!80!black] (p4.south) -- (p4.south |- database.north);
+
+% Connection between Contracts and Database
+\draw[darrow] (contracts) -- node[above, font=\scriptsize\bfseries] {State Synchronization} (database);
+
+\end{tikzpicture}
+}
+\caption{Component Architecture and Operational Flows Across the 4 Web Portals}
+\label{fig:web-portals-arch}
+\end{figure}
+
+\subsection{Issuer Portal (Registrar Console)}
+The Issuer Portal provides university administrative staff with an intuitive interface for cohort management:
+\begin{itemize}
+    \item \textbf{CSV Ingestion and Validation}: Registrars upload graduation CSV files. The portal performs real-time client-side preview and schema validation using Zod, ensuring zero malformed records reach the cryptographic pipeline.
+    \item \textbf{Real-Time Issuance Progress Tracker}: During batch generation, an interactive Server-Sent Events (SSE) dashboard visualizes four progressive stages: (1) Data Preparation, (2) Commitment Generation, (3) EIP-712 Batch Signing, and (4) Merkle Tree Construction. Live counters display processed records, current chunk index, signing throughput (records/second), and elapsed time.
+    \item \textbf{On-Chain Anchoring Workflow}: Upon cryptographic completion, the portal prompts the authorized registrar wallet (via MetaMask or Web3Modal) to submit the single \texttt{anchorBatch()} transaction to Ethereum Sepolia.
+    \item \textbf{Batch History and Analytics}: Displays previously issued cohorts, active Merkle roots, total enrolled credentials, and per-credential audit statuses.
+\end{itemize}
+
+\subsection{Holder Portal (Student Wallet)}
+The Holder Portal serves as the decentralized wallet for graduates:
+\begin{itemize}
+    \item \textbf{Passwordless Onboarding}: Students log in securely using their university email via Privy passwordless authentication, eliminating complex seed phrase management.
+    \item \textbf{Credential Portfolio}: Holders view all awarded degrees, graduation honors, and cryptographic metadata.
+    \item \textbf{Interactive Selective Disclosure Interface}: The portal features interactive attribute checkboxes allowing students to selectively reveal or conceal private PII (e.g., hiding National ID, Date of Birth, or Cumulative GPA while revealing the Degree Title and Graduation Date).
+    \item \textbf{Presentation Export}: Automatically packages the disclosed attributes, corresponding cryptographic salts, EIP-712 signature, and Merkle inclusion proof into a standalone, verifiable JSON presentation file.
+\end{itemize}
+
+\subsection{Verifier Portal (Public Trust Engine)}
+The public verification interface enables employers, academic institutions, and credential evaluators to authenticate degrees trustlessly:
+\begin{itemize}
+    \item \textbf{Flexible Input Modalities}: Verifiers can drag-and-drop a credential presentation JSON file or access credentials directly via URL deep links (\texttt{/v3/verify?credId=...}).
+    \item \textbf{10-Step Interactive Visual Pipeline}: The portal renders a live progress Stepper reflecting each stage of the canonical 10-step verification algorithm. Each step shows real-time pass/fail status, diagnostic badges, execution latency, and technical failure reasons if triggered.
+    \item \textbf{Decentralized On-Chain Attestation}: Step 7 (Issuer Registry lookup), Step 8 (Batch Anchor lookup), and Step 9 (Bitmap Revocation check) execute live JSON-RPC calls against the Sepolia testnet contracts, proving validity without trusting any central server.
+\end{itemize}
+
+\subsection{Admin Panel (System Governance)}
+Enables governance administrators to manage smart contract authorization:
+\begin{itemize}
+    \item \textbf{Signer Management}: Allows the contract owner to authorize or revoke university issuing signing keys on \texttt{IssuerRegistry.sol} and update institutional DID strings.
+    \item \textbf{Emergency Bitmap Revocation}: Provides a controlled administrative interface to revoke compromised or fraudulent credentials either individually or in batches by invoking \texttt{revoke()} or \texttt{revokeBatch()} on \texttt{CredentialRegistryV3.sol}.
+\end{itemize}
+
+\section{Backend Architecture and Asynchronous Job Manager}
+
+To decouple long-running cryptographic computations from HTTP request timeouts, the backend implements an asynchronous event-driven architecture illustrated in Figure~\ref{fig:async-sse-flow}:
+
+\begin{figure}[H]
+\centering
+\resizebox{0.98\textwidth}{!}{
+\begin{tikzpicture}[
+    lifeline/.style={draw=black!40, dashed, thick},
+    entity/.style={draw=black!75, fill=blue!10, rounded corners=3pt, thick, align=center, font=\small\bfseries, inner sep=6pt, text width=2.5cm, minimum height=1.1cm},
+    msg/.style={-{Stealth[scale=0.9]}, thick, draw=black!85, font=\footnotesize},
+    retmsg/.style={-{Stealth[scale=0.9]}, dashed, thick, draw=black!75, font=\footnotesize},
+    notebox/.style={draw=orange!80!black, fill=orange!8, rounded corners=3pt, font=\scriptsize, align=center, inner sep=5pt, text width=3.8cm}
+]
+
+% Lifelines Headers
+\node[entity] (client) at (0, 0) {Registrar\\(Browser UI)};
+\node[entity] (api) at (3.6, 0) {Next.js API\\Routes Handler};
+\node[entity] (worker) at (7.4, 0) {BulkJobManager\\(Chunk Worker)};
+\node[entity] (chain) at (11.2, 0) {Ethereum\\(Sepolia)};
+\node[entity] (db) at (14.6, 0) {PostgreSQL\\(Prisma ORM)};
+
+% Vertical dashed lines
+\draw[lifeline] (client.south) -- (0, -9.6);
+\draw[lifeline] (api.south) -- (3.6, -9.6);
+\draw[lifeline] (worker.south) -- (7.4, -9.6);
+\draw[lifeline] (chain.south) -- (11.2, -9.6);
+\draw[lifeline] (db.south) -- (14.6, -9.6);
+
+% Sequence Messages with DISTINCT y-coordinates
+% Step 1: Upload CSV
+\draw[msg] (0, -1.0) -- node[above] {1. \texttt{POST /issue-batch/async}} (3.6, -1.0);
+
+% Step 2: Enqueue
+\draw[msg] (3.6, -1.6) -- node[above] {Enqueue 10k Batch} (7.4, -1.6);
+
+% Step 3: Immediate 202 Accepted
+\draw[retmsg] (3.6, -2.2) -- node[above] {2. \texttt{202 Accepted} (\texttt{jobId})} (0, -2.2);
+
+% Step 4: Connect SSE Stream
+\draw[msg] (0, -2.8) -- node[above] {3. Connect SSE: \texttt{/stream}} (3.6, -2.8);
+
+% Step 5: Subscribes
+\draw[msg] (3.6, -3.4) -- node[above] {Subscribes to Job Events} (7.4, -3.4);
+
+% Worker Processing box
+\node[notebox] at (7.4, -4.3) {\textbf{Chunk Processing ($20 \times 500$)}\\Salt Disclosures $\rightarrow$ Sign EIP-712\\$\rightarrow$ StandardMerkleTree};
+
+% Step 6: Worker pushes chunk progress
+\draw[retmsg, draw=teal!80!black] (7.4, -5.2) -- node[above, font=\scriptsize\bfseries, text=teal!80!black] {Chunk $k/20$ Progress} (3.6, -5.2);
+
+% Step 7: API pushes SSE event to Client
+\draw[retmsg, draw=teal!80!black] (3.6, -5.7) -- node[above, font=\scriptsize\bfseries, text=teal!80!black] {SSE: Live Counters, Throughput, Logs} (0, -5.7);
+
+% Step 8: Worker completed
+\draw[retmsg] (7.4, -6.3) -- node[above] {Job Done (\texttt{merkleRoot})} (3.6, -6.3);
+
+% Step 9: API notifies Client completed
+\draw[retmsg] (3.6, -6.8) -- node[above] {SSE: \texttt{status: "COMPLETED"}} (0, -6.8);
+
+% Step 10: Client anchors on Sepolia
+\draw[msg, draw=purple!80!black] (0, -7.4) -- node[above, font=\scriptsize\bfseries, text=purple!80!black] {4. \texttt{anchorBatch(root, size)} (MetaMask)} (11.2, -7.4);
+
+% Step 11: Sepolia confirms
+\draw[retmsg, draw=purple!80!black] (11.2, -8.0) -- node[above, font=\scriptsize] {Tx Confirmed (\texttt{blockNumber, txHash})} (0, -8.0);
+
+% Step 12: Client calls anchor-confirm
+\draw[msg] (0, -8.6) -- node[above] {5. \texttt{POST /anchor-confirm}} (3.6, -8.6);
+
+% Step 13: API commits to database
+\draw[msg] (3.6, -9.1) -- node[above] {Persist Batch \& Credentials} (14.6, -9.1);
+
+\end{tikzpicture}
+}
+\caption{Asynchronous Bulk Issuance Pipeline and Server-Sent Events (SSE) Streaming Sequence}
+\label{fig:async-sse-flow}
+\end{figure}
+
+\subsection{Asynchronous Job Execution Architecture}
+\begin{itemize}
+    \item \textbf{Job Submission}: Issuance requests are received at \texttt{POST /api/v3/issuer/issue-batch/async}. The endpoint generates a unique \texttt{jobId}, enqueues the batch into the in-memory \texttt{BulkJobManager}, and immediately returns HTTP 202 Accepted.
+    \item \textbf{Background Processing}: A worker thread processes the batch asynchronously in chunks of 500 records, executing disclosure hashing, EIP-712 private key signing, and Merkle tree generation.
+    \item \textbf{Real-Time SSE Streaming}: The frontend establishes a unidirectional event stream via \texttt{GET /api/v3/issuer/jobs/[jobId]/stream}. As chunks complete, progress events containing current stage, percentage completed, and log lines are pushed directly to the UI.
+    \item \textbf{Transaction Confirmation}: Once anchored on-chain by the registrar's client, \texttt{POST /api/v3/issuer/anchor-confirm} records the transaction hash and block number, persisting all records to PostgreSQL via Prisma ORM.
+\end{itemize}
+
+\subsection{Database Persistence Layer}
+The persistence layer utilizes Prisma ORM v6 with a serverless PostgreSQL instance on Neon. The relational model stores batches (\texttt{BatchV3}), individual credentials (\texttt{CredentialV3}), selective disclosure salts and commitments (\texttt{DisclosureV3}), and immutable audit logs (\texttt{RevocationV3}). All tables include composite indexes on \texttt{merkleRoot}, \texttt{batchId}, and \texttt{credId} to ensure sub-millisecond query lookups during verification.

@@ -1,0 +1,244 @@
+\chapter{Thiết kế lại kiến trúc hệ thống theo hướng Hybrid và mô hình dữ liệu ban đầu}
+
+Sau khi rà soát lại kiến trúc của hệ thống ở giai đoạn đồ án trước, nhóm nhận thấy nền tảng cũ đã cung cấp một cơ sở rất quan trọng cho việc mở rộng sang mô hình mới. Cụ thể, hệ thống cũ đã có đầy đủ các thành phần cốt lõi của một giải pháp chứng chỉ số: cơ chế phân quyền issuer trên smart contract, lớp lưu trữ dữ liệu off-chain, quy trình phát hành và thu hồi, cùng với cổng xác minh công khai dành cho bên thứ ba. Tuy nhiên, kiến trúc cũ vẫn được xây dựng trên giả định rằng \textit{chứng chỉ chính là đối tượng tồn tại trên blockchain} dưới dạng NFT hoặc Soulbound Token, còn metadata chỉ đóng vai trò mô tả bổ sung. \cite{erc721,erc5192}
+
+Trong giai đoạn luận văn, nhóm điều chỉnh lại quan điểm thiết kế theo hướng: \textbf{chứng chỉ số chính là Verifiable Credential}, còn blockchain không còn giữ vai trò là nơi lưu trữ đối tượng chứng chỉ, mà trở thành \textbf{lớp neo tin cậy (trust anchor)} cho việc xác minh. Kiến trúc mới vì vậy vẫn giữ tinh thần \textit{hybrid} của giai đoạn trước, nhưng thay đổi trọng tâm của hệ thống:
+\begin{itemize}
+    \item ở kiến trúc cũ: \textit{blockchain-centric}, trong đó token là thực thể chứng chỉ;
+    \item ở kiến trúc mới: \textit{credential-centric}, trong đó VC là thực thể chứng chỉ, còn blockchain chỉ hỗ trợ xác minh.
+\end{itemize}
+
+\section{Nguyên tắc thiết kế lại kiến trúc}
+
+Việc thiết kế lại kiến trúc được nhóm thực hiện dựa trên bốn nguyên tắc chính.
+
+\paragraph{Thứ nhất, giữ lại những thành phần cũ còn giá trị sử dụng.}
+Nhóm không xây dựng lại toàn bộ hệ thống từ đầu, mà kế thừa những thành phần đã được chứng minh là hợp lý trong đồ án trước, bao gồm:
+\begin{itemize}
+    \item tư duy tách lớp \textit{on-chain} và \textit{off-chain};
+    \item cơ chế kiểm tra toàn vẹn dữ liệu thông qua hash;
+    \item quy trình verify công khai cho verifier;
+    \item cơ chế quản lý issuer bằng smart contract.
+\end{itemize}
+
+\paragraph{Thứ hai, giảm vai trò của blockchain xuống đúng mức cần thiết.}
+Ở hệ thống mới, blockchain không nên được sử dụng như nơi lưu toàn bộ dữ liệu chứng chỉ, cũng không cần biểu diễn từng chứng chỉ như một token độc lập. Thay vào đó, blockchain chỉ cần lưu các thành phần mà verifier cần tin tưởng công khai, ví dụ:
+\begin{itemize}
+    \item issuer nào là hợp lệ;
+    \item chứng chỉ hoặc VC nào đã bị thu hồi;
+    \item anchor/hash nào đại diện cho bằng chứng toàn vẹn.
+\end{itemize}
+
+\paragraph{Thứ ba, đặt VC làm trung tâm của nghiệp vụ.}
+Trong mô hình mới, dữ liệu chứng chỉ không còn xoay quanh \texttt{tokenId} và \texttt{tokenURI}, mà xoay quanh cấu trúc chuẩn của một Verifiable Credential:
+\begin{itemize}
+    \item issuer;
+    \item credential subject;
+    \item proof;
+    \item credential status;
+    \item issuance date;
+    \item loại chứng chỉ.
+\end{itemize}
+
+\paragraph{Thứ tư, giữ cho hệ thống có thể hiện thực được trong phạm vi luận văn.}
+Dù kiến trúc mới hướng tới chuẩn W3C VC và DID, nhóm vẫn chủ động giới hạn mức độ hiện thực ở phạm vi phù hợp với thời gian và nguồn lực. Điều này có nghĩa là hệ thống chỉ cần hiện thực được:
+\begin{itemize}
+    \item việc phát hành VC ở mức nguyên mẫu;
+    \item việc verify chữ ký và kiểm tra trạng thái;
+    \item việc kết nối blockchain như trust anchor tối thiểu;
+    \item một cơ chế ownership proof đủ để minh hoạ.
+\end{itemize}
+
+\section{Kiến trúc tổng thể của hệ thống Hybrid}
+
+Kiến trúc mới của hệ thống được tổ chức thành ba lớp chính, tương tự tinh thần của hệ thống cũ nhưng với vai trò khác nhau.
+
+\subsection{Lớp 1: Credential Layer (VC Layer)}
+Đây là lớp mới đóng vai trò trung tâm trong mô hình Hybrid. Mỗi chứng chỉ số được biểu diễn dưới dạng một \textit{Verifiable Credential}, chứa nội dung chứng chỉ, định danh của người được cấp, thông tin issuer và bằng chứng chữ ký số.
+
+Lớp này chịu trách nhiệm:
+\begin{itemize}
+    \item tạo mới một chứng chỉ theo cấu trúc VC;
+    \item ký số chứng chỉ bằng khoá của issuer;
+    \item lưu trữ và trình bày chứng chỉ cho holder;
+    \item chuyển VC tới verifier khi cần xác minh.
+\end{itemize}
+
+Nếu trong mô hình cũ, token là ``đối tượng chứng chỉ'', thì ở mô hình mới, VC đảm nhiệm vai trò đó.
+
+\subsection{Lớp 2: Trust Anchor Layer (Blockchain Layer)}
+Blockchain trong kiến trúc mới không lưu trực tiếp chứng chỉ, mà đóng vai trò \textit{trust anchor}. Nhóm dự kiến lớp này sẽ lưu các dữ liệu tối thiểu nhưng đủ để tạo niềm tin công khai, bao gồm:
+\begin{itemize}
+    \item \textbf{Issuer Registry}: danh sách các issuer hợp lệ và khoá xác minh tương ứng;
+    \item \textbf{Revocation / Status Registry}: trạng thái còn hiệu lực hay đã thu hồi của credential;
+    \item \textbf{Anchor hash} (tuỳ mức hiện thực): giá trị hash đại diện cho tính toàn vẹn của VC.
+\end{itemize}
+
+Điểm khác biệt cốt lõi so với kiến trúc trước là:
+\begin{itemize}
+    \item trước đây, mỗi chứng chỉ gắn với một \texttt{tokenId} và một record on-chain;
+    \item trong kiến trúc mới, blockchain chỉ giữ ``dấu mốc tin cậy'' để hỗ trợ verifier.
+\end{itemize}
+
+Nhờ đó, số lượng dữ liệu đưa lên chain giảm đáng kể, trong khi verifier vẫn có thể xác minh độc lập.
+
+\subsection{Lớp 3: Application Layer (Frontend / Backend Services)}
+Lớp ứng dụng trong hệ thống mới vẫn giữ nhiều nét tương đồng với hệ thống cũ, nhưng được điều chỉnh lại theo luồng Hybrid. Các thành phần chính gồm:
+
+\paragraph{Issuer Portal / Issuer Service}
+Dùng để:
+\begin{itemize}
+    \item nhập dữ liệu chứng chỉ;
+    \item sinh VC;
+    \item ký VC;
+    \item gửi thông tin cần thiết lên trust anchor;
+    \item quản lý trạng thái chứng chỉ.
+\end{itemize}
+
+\paragraph{Holder Portal}
+Dùng để:
+\begin{itemize}
+    \item lưu trữ hoặc truy xuất VC đã được cấp;
+    \item xem thông tin chứng chỉ;
+    \item chia sẻ VC hoặc mã QR/đường dẫn xác minh;
+    \item thực hiện ownership proof khi cần.
+\end{itemize}
+
+\paragraph{Verifier Portal}
+Dùng để:
+\begin{itemize}
+    \item nhận VC hoặc thông tin xác minh;
+    \item kiểm tra chữ ký số của issuer;
+    \item kiểm tra issuer có hợp lệ không;
+    \item kiểm tra trạng thái revoke trên blockchain;
+    \item kết luận kết quả xác minh.
+\end{itemize}
+
+\section{So sánh kiến trúc cũ và kiến trúc mới}
+
+Về mặt logic, kiến trúc mới không phủ định hoàn toàn kiến trúc cũ, mà là một sự tái cấu trúc lại vai trò của từng thành phần. Có thể tóm tắt sự thay đổi như sau:
+
+\begin{itemize}
+    \item \textbf{Trong hệ thống cũ:}
+    \begin{itemize}
+        \item token là chứng chỉ;
+        \item metadata là mô tả của token;
+        \item verifier kiểm tra token state + metadata hash.
+    \end{itemize}
+
+    \item \textbf{Trong hệ thống mới:}
+    \begin{itemize}
+        \item VC là chứng chỉ;
+        \item blockchain là trust anchor;
+        \item verifier kiểm tra VC proof + trust anchor + revocation status.
+    \end{itemize}
+\end{itemize}
+
+Như vậy, về mặt học thuật, hệ thống đã được nâng từ mô hình \textit{token registry} lên mô hình \textit{credential verification architecture}. Điều này giúp luận văn phản ánh đúng hơn bản chất của một hệ thống chứng chỉ số triển khai thực tế.
+
+\section{Mô hình dữ liệu ban đầu cho kiến trúc mới}
+
+Do kiến trúc mới lấy VC làm trung tâm, nhóm cần xây dựng lại mô hình dữ liệu ban đầu cho chứng chỉ số. Ở giai đoạn 7 tuần đầu, nhóm chưa hiện thực đầy đủ toàn bộ chuẩn VC, nhưng đã xác định được các trường dữ liệu nền tảng cần có.
+
+\subsection{Dữ liệu cốt lõi của một chứng chỉ số}
+Một chứng chỉ số trong hệ thống Hybrid cần tối thiểu các nhóm dữ liệu sau:
+
+\begin{itemize}
+    \item \textbf{Thông tin định danh credential:}
+    \begin{itemize}
+        \item mã định danh của credential;
+        \item loại credential;
+        \item phiên bản dữ liệu.
+    \end{itemize}
+
+    \item \textbf{Thông tin issuer:}
+    \begin{itemize}
+        \item định danh của issuer;
+        \item tên đơn vị cấp phát;
+        \item khoá công khai hoặc tham chiếu tới khoá xác minh.
+    \end{itemize}
+
+    \item \textbf{Thông tin holder / credential subject:}
+    \begin{itemize}
+        \item định danh của người được cấp;
+        \item dữ liệu nhận diện ở mức cần thiết;
+        \item các thuộc tính liên quan tới việc học tập hoặc chứng nhận.
+    \end{itemize}
+
+    \item \textbf{Thông tin thời gian và trạng thái:}
+    \begin{itemize}
+        \item ngày phát hành;
+        \item ngày hiệu lực (nếu có);
+        \item trạng thái revoke/status reference.
+    \end{itemize}
+
+    \item \textbf{Proof:}
+    \begin{itemize}
+        \item thuật toán ký;
+        \item chữ ký số của issuer;
+        \item tham chiếu verify method.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Phân tách dữ liệu on-chain và off-chain}
+
+Một trong những thay đổi quan trọng nhất của kiến trúc mới là việc phân định lại dữ liệu nào cần nằm on-chain và dữ liệu nào nên nằm off-chain.
+
+\paragraph{Dữ liệu off-chain}
+Các dữ liệu sau sẽ được nhóm xếp vào phần VC hoặc lưu trữ ngoài chuỗi:
+\begin{itemize}
+    \item nội dung đầy đủ của chứng chỉ;
+    \item thông tin học tập chi tiết;
+    \item dữ liệu cá nhân hoặc dữ liệu nhạy cảm;
+    \item các minh chứng, transcript hoặc tài liệu đính kèm.
+\end{itemize}
+
+\paragraph{Dữ liệu on-chain}
+Các dữ liệu sau được xem là phù hợp để đưa lên blockchain:
+\begin{itemize}
+    \item danh sách issuer hợp lệ;
+    \item trạng thái revoke;
+    \item anchor/hash của VC;
+    \item event log phục vụ kiểm tra và audit.
+\end{itemize}
+
+Cách phân tách này giúp hệ thống giữ được:
+\begin{itemize}
+    \item tính minh bạch cho những dữ liệu cần công khai;
+    \item tính riêng tư cho những dữ liệu nhạy cảm;
+    \item chi phí thấp hơn so với mô hình token-centric trước đây.
+\end{itemize}
+
+\subsection{Dữ liệu cần thiết cho bài toán verify}
+
+Từ góc nhìn của verifier, hệ thống mới chỉ cần cung cấp đủ thông tin để trả lời ba câu hỏi:
+\begin{enumerate}
+    \item VC này có thực sự do issuer hợp lệ phát hành hay không?
+    \item VC này có bị thay đổi nội dung kể từ khi được cấp hay không?
+    \item VC này hiện còn hiệu lực hay đã bị thu hồi?
+\end{enumerate}
+
+Do đó, verifier không nhất thiết cần đọc toàn bộ logic on-chain như trong hệ thống cũ. Thay vào đó, verifier sẽ:
+\begin{itemize}
+    \item đọc VC;
+    \item kiểm tra chữ ký số;
+    \item kiểm tra issuer trong trust anchor;
+    \item kiểm tra trạng thái revoke;
+    \item đối chiếu anchor/hash nếu cần.
+\end{itemize}
+
+\section{Ý nghĩa của việc thiết kế lại kiến trúc}
+
+Việc hoàn thành phần thiết kế lại kiến trúc và mô hình dữ liệu trong 7 tuần đầu có ý nghĩa đặc biệt quan trọng, vì đây là bước chuyển từ mức \textit{minh hoạ blockchain} sang mức \textit{thiết kế hệ thống chứng chỉ số có khả năng triển khai thực tế}. 
+
+Nếu chỉ tiếp tục mở rộng kiến trúc cũ, hệ thống sẽ mạnh về mặt trình diễn on-chain nhưng khó trả lời các câu hỏi thực tế về chi phí, chuẩn hoá, khả năng liên thông và quyền riêng tư. Ngược lại, với kiến trúc Hybrid mới, nhóm đã xây dựng được một nền tảng phù hợp hơn để:
+\begin{itemize}
+    \item triển khai nguyên mẫu phát hành VC;
+    \item xây dựng trust anchor on-chain ở mức tối thiểu;
+    \item hiện thực verify portal theo mô hình mới;
+    \item và đặc biệt là chuẩn bị cho bài toán ownership proof trong các tuần tiếp theo.
+\end{itemize}
+
+\section{Kết luận của phần thiết kế lại kiến trúc}
+
+Từ việc kế thừa có chọn lọc kiến trúc blockchain-native ban đầu và tái cấu trúc hệ thống theo hướng VC-centric, nhóm đã xây dựng được một mô hình kiến trúc mới trong đó blockchain chỉ đóng vai trò trust anchor, còn Verifiable Credential trở thành thực thể chứng chỉ chính. Đây là bước chuyển quan trọng cả về mặt lý thuyết lẫn thực tiễn, giúp hệ thống phù hợp hơn với quy mô triển khai của trường đại học, đồng thời tạo nền tảng cho các bước hiện thực tiếp theo như issuer service, trust registry, revocation và verify flow.

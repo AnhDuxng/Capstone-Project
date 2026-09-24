@@ -1,0 +1,173 @@
+\chapter{Đánh giá kết quả đạt được sau 7 tuần và mức độ hoàn thành kế hoạch}
+
+Sau 7 tuần đầu của giai đoạn luận văn, nhóm đã hoàn thành phần lớn các công việc thuộc nhóm nghiên cứu nền tảng, phân tích kiến trúc và hiện thực bước đầu các thành phần cốt lõi của hệ thống mới. Dù hệ thống chưa hoàn thiện toàn bộ quy trình \textit{end-to-end}, tiến độ hiện tại vẫn được xem là phù hợp với kế hoạch đề ra, bởi giai đoạn này vốn được thiết kế như một giai đoạn ``định hình lại nền tảng'' trước khi bước sang hiện thực và đánh giá toàn diện trong nửa sau của luận văn.
+
+\section{Mức độ hoàn thành so với kế hoạch ban đầu}
+
+Theo kế hoạch 15 tuần đã đề ra, 7 tuần đầu tiên tập trung vào các nội dung:
+\begin{itemize}
+    \item rà soát và định hình lại mục tiêu luận văn;
+    \item nghiên cứu W3C Verifiable Credentials và DID;
+    \item thiết kế lại kiến trúc hệ thống theo hướng Hybrid;
+    \item thiết kế mô hình dữ liệu cho credential;
+    \item bước đầu hiện thực issuer service và xác định trust anchor on-chain.
+\end{itemize}
+
+So với kế hoạch này, nhóm đánh giá mức độ hoàn thành theo ba lớp: \textit{đã hoàn thành}, \textit{đang thực hiện đúng hướng}, và \textit{chưa thực hiện nhưng vẫn nằm trong phạm vi hợp lý của giai đoạn sau}.
+
+\subsection{Những nội dung đã hoàn thành}
+Nhóm đã hoàn thành tương đối đầy đủ các nội dung mang tính nền tảng và định hướng, bao gồm:
+
+\paragraph{(1) Hoàn thành việc đánh giá lại mô hình blockchain-native cũ}
+Đây là bước rất quan trọng vì nó giúp xác định rõ tại sao không nên chỉ tiếp tục mở rộng hệ thống cũ, mà cần chuyển sang kiến trúc mới. Nhóm không chỉ dừng ở việc nêu ra nhược điểm của mô hình token-centric, mà còn phân tích được nguyên nhân sâu hơn như sự chưa tương thích với bản chất của chứng chỉ học thuật, vấn đề ownership proof, và giới hạn về chi phí cũng như khả năng liên thông.
+
+\paragraph{(2) Hoàn thành nghiên cứu nền tảng về VC, DID và ownership proof}
+Nhóm đã làm rõ:
+\begin{itemize}
+    \item VC là gì và khác gì so với NFT/SBT;
+    \item DID có vai trò gì trong mô hình định danh;
+    \item ownership proof giải quyết bài toán nào và vì sao nó quan trọng hơn mức verify token đơn thuần.
+\end{itemize}
+
+Việc hoàn thành khối nghiên cứu này có ý nghĩa quyết định vì nó cung cấp nền tảng lý thuyết cho toàn bộ kiến trúc mới.
+
+\paragraph{(3) Hoàn thành thiết kế lại kiến trúc hệ thống theo hướng Hybrid}
+Nhóm đã xác định được mô hình mới trong đó:
+\begin{itemize}
+    \item VC là thực thể chứng chỉ chính;
+    \item blockchain chỉ đóng vai trò trust anchor;
+    \item các thành phần issuer, holder, verifier và trust anchor được phân vai rõ ràng;
+    \item dữ liệu on-chain và off-chain được phân tách lại theo hướng hợp lý hơn.
+\end{itemize}
+
+Điểm quan trọng là thiết kế này không tách rời hoàn toàn với hệ thống cũ, mà kế thừa được những gì nhóm đã làm ở giai đoạn đồ án trước.
+
+\paragraph{(4) Hoàn thành mô hình dữ liệu ban đầu cho chứng chỉ số theo hướng VC}
+Nhóm đã xác định được các trường dữ liệu cốt lõi, các lớp dữ liệu cần thiết cho việc phát hành, xác minh và thu hồi, cũng như mối liên hệ giữa dữ liệu của credential và trust anchor on-chain.
+
+\paragraph{(5) Hoàn thành bước đầu nguyên mẫu Issuer Service}
+Mặc dù chưa đạt tới mức hệ thống hoàn chỉnh, nhóm đã bước đầu có thể:
+\begin{itemize}
+    \item nhận dữ liệu chứng chỉ đầu vào;
+    \item sinh ra cấu trúc VC tối giản;
+    \item tổ chức dữ liệu theo mô hình mới;
+    \item chuẩn bị cho pipeline ký số.
+\end{itemize}
+
+Điều này cho thấy hệ thống đã bắt đầu chuyển từ mức \textit{thiết kế} sang mức \textit{nguyên mẫu kỹ thuật}.
+
+\subsection{Những nội dung đang thực hiện đúng hướng nhưng chưa hoàn chỉnh}
+Một số phần đã được khởi động hoặc thiết kế rõ, nhưng chưa hoàn tất ở thời điểm giữa kỳ. Điều này được xem là phù hợp vì các phần này về bản chất nằm ở ranh giới giữa giai đoạn nghiên cứu và giai đoạn hiện thực sâu hơn.
+
+\paragraph{(1) Cơ chế ký số VC}
+Nhóm đã làm rõ logic và vai trò của khối ký số, xác định được vị trí của \texttt{proof} trong credential và vai trò của private key issuer. Tuy nhiên, nhóm chưa hoàn chỉnh toàn bộ pipeline ký số ở mức production-ready. Đây là phần sẽ tiếp tục được hoàn thiện trong các tuần sau.
+
+\paragraph{(2) Trust anchor on-chain}
+Nhóm đã thiết kế rõ các thành phần như issuer registry, revocation/status registry và anchor logic. Tuy nhiên, contract implementation mới dừng ở mức phân tích và chuẩn bị kiến trúc, chưa hoàn tất triển khai đầy đủ. Điều này là hợp lý vì việc hiện thực on-chain chỉ thực sự hiệu quả sau khi mô hình dữ liệu VC đã ổn định.
+
+\paragraph{(3) Verify flow mới}
+Nhóm đã xây dựng được logic xác minh ở mức thiết kế: verifier cần kiểm tra chữ ký VC, issuer hợp lệ, trạng thái revoke và anchor/hash. Tuy nhiên, verifier portal mới chưa được hiện thực đầy đủ ở mốc 7 tuần đầu. Đây là một trong các trọng tâm chính của giai đoạn tiếp theo.
+
+\paragraph{(4) Ownership proof}
+Nhóm đã xác định được bài toán và hướng hiện thực thông qua challenge--response. Dù chưa hoàn thiện tính năng này, việc xác định rõ vấn đề và mô hình giải quyết được xem là một kết quả quan trọng, vì đây là điểm khác biệt chính giữa hệ thống cũ và kiến trúc mới.
+
+\subsection{Những nội dung chưa thực hiện nhưng vẫn nằm trong kế hoạch hợp lý}
+Ở mốc giữa kỳ, một số nội dung chưa được hiện thực hoặc mới dừng ở mức mô tả:
+\begin{itemize}
+    \item verifier portal hoàn chỉnh;
+    \item ownership proof tương tác thực sự;
+    \item revocation flow chạy hoàn chỉnh trên trust anchor;
+    \item kiểm thử end-to-end;
+    \item benchmark và đánh giá định lượng.
+\end{itemize}
+
+Nhóm đánh giá điều này là phù hợp với kế hoạch tổng thể vì đây vốn là các hạng mục của nửa sau luận văn, sau khi phần nền tảng lý thuyết và thiết kế đã được chốt lại.
+
+\section{Kết quả đạt được từ góc độ học thuật}
+
+Nếu chỉ nhìn ở góc độ tính năng phần mềm, giai đoạn 7 tuần đầu có thể chưa tạo ra ngay một hệ thống hoàn chỉnh có thể trình diễn toàn bộ luồng mới. Tuy nhiên, xét về mặt học thuật, đây lại là giai đoạn có giá trị rất lớn vì nhóm đã hoàn thành được một số kết quả quan trọng.
+
+\paragraph{Thứ nhất, nhóm đã nâng được bài toán từ mức ``ứng dụng blockchain'' lên mức ``kiến trúc chứng chỉ số theo chuẩn hiện đại''.}
+Thay vì chỉ chứng minh rằng blockchain có thể dùng để lưu trạng thái chứng chỉ, nhóm đã bắt đầu tiếp cận các chuẩn quốc tế như VC và DID, từ đó giúp luận văn có chiều sâu hơn và không bị dừng lại ở mức demo công nghệ.
+
+\paragraph{Thứ hai, nhóm đã làm rõ hơn bản chất của bài toán chứng chỉ số.}
+Thông qua việc nghiên cứu ownership proof, nhóm nhận ra rằng một hệ thống chứng chỉ số không chỉ cần xác minh ``chứng chỉ có hợp lệ không'', mà còn cần giải quyết vấn đề ``ai là người thực sự sở hữu và trình bày chứng chỉ đó''. Đây là một bước trưởng thành quan trọng về mặt tư duy thiết kế hệ thống.
+
+\paragraph{Thứ ba, nhóm đã xây dựng được nền tảng để trả lời những câu hỏi khó hơn về tính khả thi thực tế.}
+Nhờ chuyển sang mô hình trust anchor, nhóm có cơ sở để thảo luận sâu hơn về:
+\begin{itemize}
+    \item chi phí triển khai trong môi trường đại học;
+    \item khả năng mở rộng;
+    \item cách quản lý private key của issuer;
+    \item cách xử lý revocation;
+    \item và lộ trình tích hợp với các chuẩn quốc tế.
+\end{itemize}
+
+\section{Những khó khăn gặp phải trong 7 tuần đầu}
+
+Dù tiến độ nhìn chung là tích cực, nhóm cũng gặp một số khó khăn đáng kể cả về mặt học thuật lẫn kỹ thuật.
+
+\subsection{Khó khăn trong việc chuyển đổi kiến trúc}
+Khó khăn lớn nhất là việc phải chuyển đổi từ một hệ thống đã có logic tương đối rõ ràng (token là chứng chỉ) sang một mô hình mới (VC là chứng chỉ, blockchain chỉ là trust anchor). Đây không phải là một thay đổi nhỏ, mà là một sự dịch chuyển về tư duy thiết kế.
+
+Điều này kéo theo việc nhóm phải xem xét lại:
+\begin{itemize}
+    \item đối tượng trung tâm của hệ thống;
+    \item vai trò của smart contract;
+    \item cách verifier thực hiện việc verify;
+    \item và cách biểu diễn quyền sở hữu.
+\end{itemize}
+
+\subsection{Khó khăn do tài liệu nghiên cứu phân tán}
+Các tài liệu liên quan đến W3C VC, DID và ownership proof khá rộng, nhiều khái niệm mới và có nhiều cách hiện thực khác nhau. Đây là một khó khăn thực sự trong giai đoạn đầu, vì nếu nghiên cứu quá sâu ở tất cả các hướng thì sẽ vượt quá phạm vi luận văn, còn nếu nghiên cứu quá ít thì hệ thống mới sẽ thiếu nền tảng lý thuyết.
+
+Do đó, nhóm đã phải mất thời gian để chọn mức độ tiếp cận phù hợp: đủ sâu để có giá trị học thuật, nhưng vẫn đủ gọn để có thể hiện thực được.
+
+\subsection{Khó khăn trong việc cân bằng giữa nghiên cứu và triển khai}
+Một thách thức khác là cân bằng giữa:
+\begin{itemize}
+    \item việc nghiên cứu lý thuyết để không đi sai hướng;
+    \item và việc hiện thực nguyên mẫu để không biến luận văn thành một báo cáo chỉ thuần nghiên cứu.
+\end{itemize}
+
+Nhóm nhận thấy nếu chỉ tập trung code sớm thì hệ thống có thể rơi vào tình trạng ``làm nhanh nhưng không chắc hướng''. Ngược lại, nếu chỉ nghiên cứu kéo dài thì sẽ không còn đủ thời gian cho giai đoạn hiện thực. Vì vậy, 7 tuần đầu được tổ chức theo hướng: ưu tiên chốt nền tảng trước, rồi mới hiện thực nguyên mẫu ở những phần đã ổn định.
+
+\subsection{Khó khăn trong bài toán ownership proof}
+Ownership proof là một phần mà nhóm đánh giá là khó nhất trong giai đoạn đầu. So với mô hình token-centric, bài toán verify credential còn gắn thêm yêu cầu chứng minh rằng người đang trình chứng chỉ thực sự là chủ sở hữu. Đây là một bài toán vừa liên quan đến danh tính, vừa liên quan đến UX, vừa liên quan đến bảo mật.
+
+Việc nhận diện được đây là một bài toán riêng biệt đã là một bước tiến, nhưng để hiện thực trọn vẹn vẫn còn cần thêm thời gian và sẽ là trọng tâm của giai đoạn tiếp theo.
+
+\section{Đánh giá tổng thể tiến độ giữa kỳ}
+
+Nhìn tổng thể, nhóm đánh giá tiến độ sau 7 tuần là \textbf{đúng hướng và đạt nền tảng cần thiết} cho nửa sau của luận văn.
+
+Nếu xét theo chiều ngang, tức là so với danh sách công việc cụ thể, nhóm đã hoàn thành phần lớn các nhiệm vụ thuộc khối:
+\begin{itemize}
+    \item nghiên cứu lý thuyết nền tảng;
+    \item xác định lại bài toán;
+    \item thiết kế lại kiến trúc;
+    \item thiết kế mô hình dữ liệu;
+    \item hiện thực bước đầu issuer service và trust anchor design.
+\end{itemize}
+
+Nếu xét theo chiều sâu, nhóm đã đạt được một bước chuyển rõ rệt:
+\begin{itemize}
+    \item từ hệ thống blockchain-native đơn thuần;
+    \item sang một kiến trúc chứng chỉ số có định hướng chuẩn hoá, có khả năng tiếp cận thực tế hơn và mở ra nhiều hướng đánh giá giá trị hơn cho luận văn.
+\end{itemize}
+
+Điểm quan trọng là các kết quả hiện tại không bị rời rạc. Ngược lại, chúng liên kết với nhau khá chặt chẽ:
+\begin{itemize}
+    \item kiến trúc mới sinh ra mô hình dữ liệu mới;
+    \item mô hình dữ liệu mới kéo theo issuer service mới;
+    \item issuer service mới dẫn đến yêu cầu về signing và verify mới;
+    \item verify mới kéo theo trust anchor và ownership proof.
+\end{itemize}
+
+Nhờ đó, nhóm có thể bước vào giai đoạn sau với một nền tảng tương đối ổn định, thay vì phải tiếp tục điều chỉnh hướng đi.
+
+\section{Kết luận của phần đánh giá giữa kỳ}
+
+Tại mốc giữa kỳ, nhóm chưa hoàn thiện được toàn bộ hệ thống Hybrid, nhưng đã hoàn thành được phần quan trọng nhất: \textbf{xây dựng xong nền tảng học thuật, kiến trúc và nguyên mẫu kỹ thuật ban đầu} cho hướng nghiên cứu mới. Những kết quả này cho thấy tiến độ thực hiện luận văn là khả thi, đồng thời khẳng định rằng quyết định chuyển từ blockchain-native sang Hybrid VC là một lựa chọn đúng đắn cả về mặt học thuật lẫn thực tiễn.
+
+Các phần còn lại như verify portal, ownership proof hoàn chỉnh, trust anchor implementation và benchmark đều là các bước tiếp nối trực tiếp từ những gì nhóm đã hoàn thành trong 7 tuần đầu. Do đó, nhóm đánh giá rằng tiến độ hiện tại tuy chưa đi vào hoàn thiện tính năng, nhưng đã đạt được mục tiêu quan trọng nhất của giai đoạn giữa kỳ: \textbf{chốt được một nền tảng đúng hướng, có cơ sở lý thuyết và có khả năng hiện thực tiếp trong nửa sau của luận văn.}

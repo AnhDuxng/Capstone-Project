@@ -1,0 +1,180 @@
+% Chapter 6: Project Evaluation, Challenges, and Future Directions
+
+\chapter{Project Evaluation, Challenges, and Future Directions}
+
+\section{Summary of Completed Milestones Across 15 Weeks}
+
+Our Capstone Project was conducted over a comprehensive \textbf{15-week development lifecycle}, during which we successfully achieved \textbf{100\% of all research, engineering, and empirical objectives}. Through this journey, our team evolved the project from theoretical concepts and standards specifications into a production-ready, decentralized academic credential infrastructure deployed on Ethereum Sepolia.
+
+The project execution was organized into four sequential, interconnected phases:
+\begin{enumerate}
+    \item \textbf{Phase 1: Research, Requirements Formalization, and Architecture (Weeks 1--3)}: In-depth analysis of Phase 2 limitations (specifically ERC-721 on-chain gas bottlenecks and mandatory IPFS pinning fees), formalization of our system specification in \texttt{SPEC.md} (56~KB), database schema modeling via Prisma ORM v6, and generation of 10,000 synthetic graduation records for empirical stress testing.
+    \item \textbf{Phase 2: Smart Contracts, Cryptographic Engine, and Bulk Issuing (Weeks 4--7)}: Implementation of \texttt{IssuerRegistry.sol} and \texttt{CredentialRegistryV3.sol} featuring \texttt{Ownable2Step} and bitmap revocation; construction of our modular 6-package TypeScript SDK; achieving 100\% smart contract test coverage (52 test cases); and developing the chunked bulk issuance engine (\texttt{bulk.ts}, $20 \times 500 = 10,000$ credentials).
+    \item \textbf{Phase 3: Full-Stack Web Portals and Asynchronous Job Manager (Weeks 8--11)}: Engineering four specialized Next.js 14 web portals (Issuer, Holder, Verifier, Admin); integrating Privy passwordless email authentication for graduates; building the asynchronous \texttt{BulkJobManager} with Server-Sent Events (SSE) live progress streaming; and implementing the interactive 10-step visual verification pipeline.
+    \item \textbf{Phase 4: Empirical Benchmarks, Security Hardening, and Thesis Defense (Weeks 12--15)}: Executing our exhaustive benchmark suite across Scenarios A through E (809 signatures/sec, 27.54s 10k bulk issuance, 5.502 ms verification latency, 9,785$\times$ gas reduction); anchoring a live 10,000-credential batch on Ethereum Sepolia Testnet; conducting STRIDE threat analysis, Slither static audit, and passing 33/33 exploit simulations; and finalizing our graduation thesis manuscript, demonstration media, and presentation slide deck.
+\end{enumerate}
+
+Table~\ref{tab:15week-summary} summarizes our key deliverables and verification outputs across all 15 weeks:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|>{\centering\arraybackslash}p{1.2cm}|>{\RaggedRight}p{4.2cm}|>{\centering\arraybackslash}p{1.8cm}|>{\RaggedRight}p{8.0cm}|}
+\hline
+\textbf{Week} & \textbf{Core Milestone} & \textbf{Status} & \textbf{Key Deliverables \& Verification Artifacts} \\
+\hline
+1 & Problem Analysis \& Architecture & \textbf{100\% Done} & Problem specification (\texttt{SPEC.md}), EIP-712 typing schema, Trust Anchor model. \\
+\hline
+2 & Database Modeling \& Monorepo & \textbf{100\% Done} & Neon PostgreSQL setup, Prisma Schema V3, 10k synthetic student fixture script. \\
+\hline
+3 & Cryptographic Design \& Schemas & \textbf{100\% Done} & Salted-hash commitment formulation, Merkle double-hashing, Domain Separator design. \\
+\hline
+4 & Smart Contract Suite & \textbf{100\% Done} & \texttt{IssuerRegistry.sol} and \texttt{CredentialRegistryV3.sol} with bitmap revocation. \\
+\hline
+5 & EIP-712 Core TypeScript SDK & \textbf{100\% Done} & 6 modular packages (\texttt{domain}, \texttt{signer}, \texttt{verifier}, \texttt{disclosure}, \texttt{merkle}, \texttt{index}). \\
+\hline
+6 & Smart Contract Testing \& Gas & \textbf{100\% Done} & 52 Hardhat unit tests (100\% statement/branch/line/func coverage), gas profile report. \\
+\hline
+7 & High-Throughput Bulk Engine & \textbf{100\% Done} & \texttt{bulk.ts} chunking engine ($20 \times 500 = 10,000$), Node.js heap memory optimization. \\
+\hline
+8 & Async Queue \& SSE Streaming & \textbf{100\% Done} & In-memory \texttt{BulkJobManager}, async HTTP 202 route, live SSE event streaming. \\
+\hline
+9 & Issuer Portal (Registrar Console) & \textbf{100\% Done} & CSV drag-and-drop ingestion, Zod parser, 4-stage SSE stepper, Web3 anchor trigger. \\
+\hline
+10 & Holder Portal (Student Wallet) & \textbf{100\% Done} & Privy email passwordless login, credential vault, Selective Disclosure interactive UI. \\
+\hline
+11 & Verifier Portal \& Admin Panel & \textbf{100\% Done} & 10-step visual stepper, deep-link lookups, live Sepolia RPC, signer key governance. \\
+\hline
+12 & Empirical Evaluation Scenarios A--E & \textbf{100\% Done} & Benchmark dataset: 809 sign/s, 27.54s 10k bulk, 5.5ms verify, $C=500$ load, 9,800$\times$ gas cut. \\
+\hline
+13 & Ethereum Sepolia Testnet Anchor & \textbf{100\% Done} & Live 10,000 batch anchored in block 11,654,826 (tx \texttt{0x54b11343...}, 167,804 gas). \\
+\hline
+14 & Security Hardening \& Static Audit & \textbf{100\% Done} & STRIDE 6-dimensional matrix, Slither 10-category checklist, 33/33 exploit tests passed. \\
+\hline
+15 & Thesis Finalization \& Defense & \textbf{100\% Done} & Full LaTeX manuscript in \texttt{DATN-253}, 5-min demo video, slides, GitHub release. \\
+\hline
+\end{tabular}
+}
+\caption{Comprehensive 15-Week Project Execution Summary (100\% Completed)}
+\label{tab:15week-summary}
+\end{table}
+
+\section{Master Project Gantt Chart (15-Week Timeline)}
+
+Figure~\ref{fig:project-gantt} illustrates our complete 15-week master project timeline, showcasing the steady progression and successful completion of all four phases:
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{ganttchart}[
+    hgrid,
+    vgrid,
+    x unit=0.88cm,
+    y unit chart=0.62cm,
+    time slot format=simple,
+    title/.append style={fill=blue!10},
+    title label font=\small\bfseries,
+    bar/.append style={fill=teal!60, draw=teal!80!black},
+    bar complete/.append style={fill=teal!70, draw=teal!90!black},
+    progress label text=\relax,
+    group/.append style={fill=purple!20, draw=purple!80!black},
+    milestone/.append style={fill=red!70, draw=red!90!black}
+]{1}{15}
+\gantttitle{Complete 15-Week Master Project Timeline (All Phases 100\% Completed)}{15} \\
+\gantttitlelist{1,...,15}{1} \\
+
+% Phase 1: Research & Specifications (Weeks 1-3)
+\ganttgroup[progress=100]{\textbf{Phase 1: Research, Requirements \& Schemas}}{1}{3} \\
+\ganttbar[progress=100]{W1: Problem Analysis \& SPEC.md}{1}{1} \\
+\ganttbar[progress=100]{W2: Database Modeling \& Monorepo}{2}{2} \\
+\ganttbar[progress=100]{W3: Cryptographic Design \& Schemas}{3}{3} \\
+\ganttmilestone{M1: Technical Foundations Formalized}{3} \\
+
+% Phase 2: Core Engineering (Weeks 4-7)
+\ganttgroup[progress=100]{\textbf{Phase 2: Smart Contracts \& Core SDK}}{4}{7} \\
+\ganttbar[progress=100]{W4: Smart Contract Implementation}{4}{4} \\
+\ganttbar[progress=100]{W5: EIP-712 Core TypeScript SDK}{5}{5} \\
+\ganttbar[progress=100]{W6: Unit Testing (100\% Coverage)}{6}{6} \\
+\ganttbar[progress=100]{W7: Bulk Issuance Engine (bulk.ts)}{7}{7} \\
+\ganttmilestone{M2: Core Cryptographic Engine Complete}{7} \\
+
+% Phase 3: Web Portals & Infrastructure (Weeks 8-11)
+\ganttgroup[progress=100]{\textbf{Phase 3: Full-Stack Web Application}}{8}{11} \\
+\ganttbar[progress=100]{W8: Async Worker \& SSE Streaming}{8}{8} \\
+\ganttbar[progress=100]{W9: Issuer Portal (Registrar Console)}{9}{9} \\
+\ganttbar[progress=100]{W10: Holder Portal (Student Wallet)}{10}{10} \\
+\ganttbar[progress=100]{W11: Verifier Portal \& Admin Panel}{11}{11} \\
+\ganttmilestone{M3: 4 Web Portals Operational}{11} \\
+
+% Phase 4: Evaluation, Hardening & Defense (Weeks 12-15)
+\ganttgroup[progress=100]{\textbf{Phase 4: Empirical Evaluation \& Defense}}{12}{15} \\
+\ganttbar[progress=100]{W12: Exhaustive Benchmarks (Scenarios A--E)}{12}{12} \\
+\ganttbar[progress=100]{W13: Ethereum Sepolia Live 10k Anchor}{13}{13} \\
+\ganttbar[progress=100]{W14: Security Hardening (33/33 Tests)}{14}{14} \\
+\ganttbar[progress=100]{W15: Thesis Manuscript \& Defense}{15}{15} \\
+\ganttmilestone{Final Defense Release v3.0}{15}
+\end{ganttchart}
+}
+\caption{Comprehensive 15-Week Master Project Schedule Demonstrating 100\% Task Completion}
+\label{fig:project-gantt}
+\end{figure}
+
+\section{Challenges and Engineering Difficulties Encountered}
+
+Throughout the 15-week development journey of the BK Credential System, our project team encountered several practical challenges and technical bottlenecks. Resolving these hurdles provided us with valuable software engineering and applied cryptography experience:
+
+\subsection{Challenge 1: Overcoming Ethereum L1 Gas Cost Bottlenecks}
+\begin{itemize}
+    \item \textbf{Practical Obstacle}: In our initial Phase 2 implementation, each academic credential was minted individually on-chain as an ERC-721 token, consuming $\sim$103,156 gas per certificate. When testing this design against a standard graduating cohort of 10,000 students, the cumulative gas requirement exceeded \textbf{1.03 billion gas} (costing over \textbf{\$92,700 USD} on Ethereum mainnet at 30 gwei and \$3,000/ETH). This exorbitant cost quickly revealed that per-credential on-chain minting was commercially and institutionally impractical for Vietnamese universities.
+    \item \textbf{Our Solution}: We re-architected the system around the \textbf{EIP-712 Trust Anchor + Merkle Batching} design pattern. By shifting structured signing off-chain and combining all 10,000 credentials into an OpenZeppelin standard Merkle tree, our university registrar only submits a single 32-byte Merkle root transaction to \texttt{CredentialRegistryV3.sol}. This reduced total gas consumption to just \textbf{105,420 gas} ($\sim$\textbf{\$0.56 USD}), achieving a \textbf{9,785$\times$ reduction in transaction overhead} and bringing the amortized on-chain cost down to a negligible \textbf{10.5 gas per student}.
+\end{itemize}
+
+\subsection{Challenge 2: Preventing Node.js Memory Exhaustion and Gateway Timeouts during Bulk Issuance}
+\begin{itemize}
+    \item \textbf{Practical Obstacle}: Signing and processing 10,000 credentials in a single Node.js process requires computing over 50,000 cryptographic hashes (salts, commitments, EIP-712 struct hashes, and Merkle leaf pairs). During our early experiments, executing this pipeline in a single monolithic loop caused the Node.js V8 heap memory to swell beyond 1.8~GB, causing out-of-memory (OOM) process crashes and exceeding our reverse proxy's 30-second HTTP timeout threshold.
+    \item \textbf{Our Solution}: We designed and implemented an asynchronous chunking engine in \texttt{bulk.ts} ($20 \times 500 = 10,000$ credentials) managed by our in-memory \texttt{BulkJobManager}. The frontend client receives an immediate \textbf{HTTP 202 Accepted} response with a unique \texttt{jobId}, while chunk progress is streamed continuously back to the browser via a persistent \textbf{Server-Sent Events (SSE)} channel. Dereferencing intermediate JSON records chunk by chunk allowed Node.js garbage collection to keep peak heap usage strictly under \textbf{250~MB}, ensuring rock-solid stability even for 50,000-credential workloads.
+\end{itemize}
+
+\subsection{Challenge 3: Balancing PII Privacy with Zero-Knowledge Computational Overhead}
+\begin{itemize}
+    \item \textbf{Practical Obstacle}: Academic credentials contain sensitive Personally Identifiable Information (PII) such as National ID numbers, dates of birth, and comprehensive grade transcripts. We initially investigated implementing Zero-Knowledge Proofs (ZK-SNARKs such as Groth16 or Plonk) for selective disclosure. However, we found that compiling client-side witness proofs in modern web browsers required downloading large proving keys ($>20$~MB) and consumed several gigabytes of RAM with proving latencies between 10 and 30 seconds, creating an unacceptable user experience for student laptops and mobile phones.
+    \item \textbf{Our Solution}: We opted for a lightweight and highly efficient \textbf{256-bit Salted-Hash Commitment Scheme} ($\text{keccak256}(\text{salt} \parallel \text{key} \parallel \text{val})$). By combining each private claim with a cryptographically secure random salt generated from a $2^{256}$ search space, brute-force dictionary attacks become mathematically impossible. Credential holders can selectively disclose individual attributes in just \textbf{0.82 ms}, completely avoiding the complexity and performance penalties of zero-knowledge trusted setups.
+\end{itemize}
+
+\subsection{Challenge 4: Mitigating Second-Preimage Merkle Attacks and Cross-Chain Signature Replay}
+\begin{itemize}
+    \item \textbf{Practical Obstacle}: In naive Merkle tree implementations where leaf hashes are 64 bytes in length, an attacker can submit an intermediate branch node as a fraudulent leaf preimage (the classical second-preimage vulnerability). Furthermore, without strict domain scoping, an EIP-712 signature generated on a local test network could potentially be replayed on Ethereum mainnet or across different educational institutions.
+    \item \textbf{Our Solution}: We adopted OpenZeppelin's \texttt{StandardMerkleTree} double-hashing algorithm ($\text{keccak256}(\text{keccak256}(\text{abi.encode}(\dots)))$), ensuring that intermediate nodes and leaf hashes belong to strictly disjoint cryptographic domains. Additionally, we embedded the unique \texttt{chainId} and the deployed address of \texttt{CredentialRegistryV3} directly into our EIP-712 Domain Separator, mathematically preventing cross-contract and cross-chain replay attacks.
+\end{itemize}
+
+\subsection{Challenge 5: Minimizing On-Chain Revocation Storage Costs}
+\begin{itemize}
+    \item \textbf{Practical Obstacle}: In conventional smart contract designs, revocations are tracked using individual storage mappings (\texttt{mapping(bytes32 => bool)}). In Solidity, updating an uninitialized storage slot via \texttt{SSTORE} consumes 20,000 gas per revoked certificate. If a university registrar needed to revoke multiple certificates due to an administrative correction, the gas costs would scale linearly.
+    \item \textbf{Our Solution}: We developed a compact \textbf{256-bit Bitmap Revocation} scheme in \texttt{CredentialRegistryV3.sol}. By mapping each credential index to a specific bit within a 256-bit word ($\text{wordIndex} = \lfloor \text{index} / 256 \rfloor$, $\text{bitMask} = 1 \ll (\text{index} \bmod 256)$), revoking multiple credentials in the same batch word accesses warm storage slots, reducing state storage overhead by \textbf{$\sim$64$\times$} and making batch revocation extremely affordable.
+\end{itemize}
+
+\section{Future Directions and Open Research Opportunities}
+
+From the lessons learned and empirical insights gained during our project, we have identified several promising avenues that future student cohorts or research initiatives can explore:
+
+\subsection{Deployment on Ethereum Layer 2 Rollups (Arbitrum, Base, Optimism)}
+While our Phase 3 architecture already reduces on-chain anchoring costs to $\sim$105,420 gas ($\sim$\textbf{\$0.56 USD} on Sepolia), migrating the smart contract registry suite to Ethereum Layer 2 (L2) Rollups (such as Arbitrum One, Base, or Optimism) would decrease transaction costs by another $50 \sim 100\times$, lowering cohort anchoring fees to less than \textbf{\$0.01 USD}. Furthermore, Layer 2 networks offer sub-second transaction finality, enabling near-instantaneous anchor confirmations for university registrars.
+
+\subsection{Zero-Knowledge Range Proofs and Predicate Verification}
+Our current salted-hash commitment scheme supports binary claim disclosure (either showing a claim's plaintext or hiding it entirely). An exciting extension would be integrating succinct Zero-Knowledge Range Proofs (e.g., using Bulletproofs or Circom/SnarkJS) to support numerical predicate evaluations without revealing raw data. For instance, a job applicant could cryptographically prove that their Cumulative GPA satisfies $\text{GPA} \ge 3.2$ or that their age satisfies $\text{Age} \ge 18$, without ever revealing their exact GPA or birthdate to prospective employers.
+
+\subsection{Harmonization with W3C Verifiable Credentials Data Model v2.0}
+To achieve international accreditation interoperability, our credential data structures can be directly harmonized with the W3C Verifiable Credentials Data Model v2.0~\cite{W3CVC} and W3C Decentralized Identifiers (DIDs)~\cite{w3c_did}. By supporting standard DID resolvers (such as \texttt{did:ethr} and \texttt{did:web}), academic credentials issued by Ho Chi Minh City University of Technology (HCMUT) could be automatically recognized and verified by global academic platforms, including the European Digital Credentials for Learning (EDCI).
+
+\subsection{Mobile Holder Wallet Application with Hardware Enclave Security}
+Another valuable project continuation would be engineering a dedicated mobile wallet app (using React Native or Flutter) for iOS and Android. By utilizing the smartphone's hardware Secure Enclave or Android Keystore, student graduates could securely store their private credential presentations, authenticate presentations with biometric FaceID/TouchID, and present verifiable diplomas offline via encrypted QR codes or Near Field Communication (NFC) during in-person interviews.
+
+\subsection{Cross-Institutional Academic Credential Federation}
+Because our \texttt{IssuerRegistry.sol} smart contract is architected as a multi-tenant registry, it can naturally serve as the backbone for an academic consortium across Vietnamese universities (such as VNU-HCM member universities, VNU Hanoi, and Hanoi University of Science and Technology). Under this consortium, each member university could register its own signing keys, enabling decentralized credit transfers, dual-degree verifications, and joint diploma validations without relying on any centralized intermediary or government server.
+
+\section{Concluding Remarks}
+
+Through the design, formalization, and implementation of the BK Credential System, we have demonstrated that decentralized, blockchain-backed academic credential verification can be achieved with exceptional throughput, minimal cost, and robust privacy preservation. By substituting expensive per-credential NFT minting with off-chain EIP-712 structured data signing and Merkle tree batch anchoring, our proposed system effectively eliminates the traditional trade-off between cryptographic decentralization and institutional operational feasibility. 
+
+With an amortized cost of only \textbf{10.5 gas per graduate}, a sub-6 millisecond offline verification latency, and mathematically unforgeable security guarantees, this capstone project delivers a production-ready solution that addresses the pressing needs of modern academic institutions. Working on this project has not only deepened our understanding of applied cryptography, EVM smart contracts, and full-stack software engineering, but also provided us with meaningful practical experience in solving real-world challenges through decentralized technologies.

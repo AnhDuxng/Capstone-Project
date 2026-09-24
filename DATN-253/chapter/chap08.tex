@@ -1,0 +1,190 @@
+\chapter{Nghiên cứu nền tảng: Verifiable Credentials, DID và Ownership Proof}
+
+Sau khi xác định cần chuyển hướng từ mô hình \textit{blockchain-native} sang mô hình \textit{Hybrid}, nhóm tập trung nghiên cứu ba khái niệm nền tảng có vai trò cốt lõi trong kiến trúc mới: \textit{W3C Verifiable Credentials (VC)}, \textit{Decentralized Identifier (DID)} và \textit{ownership proof}. Đây là ba thành phần quan trọng giúp hệ thống không chỉ duy trì khả năng xác minh độc lập, mà còn tiến gần hơn tới những chuẩn quốc tế đang được áp dụng trong lĩnh vực danh tính số và chứng chỉ số. \cite{w3c_vc,w3c_did}
+
+\section{W3C Verifiable Credentials}
+
+\subsection{Khái niệm và bản chất của VC}
+
+\textit{Verifiable Credential} là một chuẩn do W3C đề xuất nhằm biểu diễn các loại chứng nhận số dưới dạng dữ liệu có thể kiểm chứng được. Có thể hiểu một cách trực quan, VC là phiên bản số của các loại giấy tờ như bằng cấp, chứng chỉ, thẻ sinh viên hoặc giấy phép, trong đó nội dung của tài liệu được biểu diễn theo cấu trúc chuẩn và được gắn chữ ký số của đơn vị cấp phát.
+
+Một VC thường xoay quanh ba vai trò chính:
+\begin{itemize}
+    \item \textbf{Issuer}: thực thể phát hành chứng chỉ, ví dụ trường đại học hoặc đơn vị đào tạo;
+    \item \textbf{Holder}: người sở hữu chứng chỉ, ví dụ sinh viên hoặc học viên;
+    \item \textbf{Verifier}: bên cần kiểm tra tính hợp lệ của chứng chỉ, ví dụ nhà tuyển dụng hoặc tổ chức khác.
+\end{itemize}
+
+Điểm quan trọng của VC là \textbf{verifier có thể kiểm tra tính hợp lệ của chứng chỉ mà không nhất thiết phải truy cập trực tiếp vào hệ thống trung tâm của issuer}. Điều này được thực hiện thông qua cơ chế chữ ký số: issuer ký lên nội dung VC, còn verifier sử dụng thông tin định danh và khoá công khai tương ứng để xác minh. Nếu nội dung bị chỉnh sửa hoặc chữ ký không hợp lệ, VC sẽ không vượt qua quá trình verify.
+
+Về mặt bản chất, VC phù hợp với bài toán chứng chỉ học tập vì chứng chỉ học thuật vốn là một loại \textit{attestation} -- tức là một tuyên bố có xác nhận từ đơn vị cấp phát đối với người học. Mô hình này tương thích tốt hơn với logic nghiệp vụ của giáo dục so với việc biểu diễn chứng chỉ trực tiếp thành một token on-chain.
+
+\subsection{Cấu trúc dữ liệu cơ bản của VC}
+
+Một Verifiable Credential thường bao gồm các thành phần chính sau:
+\begin{itemize}
+    \item \textbf{Context và Type}: cho biết VC tuân theo chuẩn dữ liệu nào và thuộc loại chứng nhận nào;
+    \item \textbf{Issuer}: định danh của đơn vị phát hành;
+    \item \textbf{Credential Subject}: chủ thể được cấp chứng chỉ và các thuộc tính liên quan;
+    \item \textbf{Issuance Date}: thời điểm phát hành;
+    \item \textbf{Credential Status}: tham chiếu tới trạng thái hiệu lực hoặc thu hồi;
+    \item \textbf{Proof}: chữ ký số hoặc bằng chứng mật mã cho VC.
+\end{itemize}
+
+Ví dụ, một VC cho chứng chỉ học tập có thể chứa:
+\begin{itemize}
+    \item tên khoá học;
+    \item đơn vị cấp phát;
+    \item thời điểm cấp;
+    \item định danh của người học;
+    \item loại chứng chỉ;
+    \item bằng chứng ký số của issuer.
+\end{itemize}
+
+So với metadata của NFT/SBT, VC không đặt trọng tâm vào \texttt{tokenId} hay khái niệm quyền sở hữu tài sản on-chain, mà tập trung vào \textit{nội dung chứng nhận} và \textit{bằng chứng xác thực}.
+
+\subsection{Lý do VC phù hợp với hệ thống chứng chỉ số}
+
+Nhóm xác định VC phù hợp hơn với bài toán chứng chỉ số vì các lý do sau:
+
+\paragraph{Thứ nhất, VC phản ánh đúng bản chất nghiệp vụ của chứng chỉ học thuật.}
+Chứng chỉ học tập không phải là tài sản để giao dịch, mà là một khẳng định có xác nhận từ đơn vị đào tạo đối với năng lực hoặc thành tựu của người học. VC cho phép biểu diễn điều này một cách trực tiếp, trong khi NFT/SBT chỉ là một lớp hạ tầng kỹ thuật.
+
+\paragraph{Thứ hai, VC giúp giảm sự phụ thuộc vào blockchain.}
+Trong mô hình VC, phần lớn dữ liệu và nghiệp vụ có thể diễn ra off-chain. Blockchain chỉ cần giữ các thông tin nhỏ nhưng quan trọng như issuer registry hoặc revocation status. Điều này giúp giảm số lượng giao dịch và giảm chi phí vận hành.
+
+\paragraph{Thứ ba, VC dễ mở rộng về quyền riêng tư.}
+Với mô hình token-centric, việc kiểm soát dữ liệu cá nhân thường đòi hỏi xử lý rất cẩn thận ở tầng metadata. Trong khi đó, VC cho phép tổ chức dữ liệu theo hướng linh hoạt hơn, mở ra khả năng mã hoá hoặc selective disclosure về sau.
+
+\paragraph{Thứ tư, VC tiệm cận các chuẩn quốc tế.}
+Nhiều sáng kiến hiện nay trong giáo dục, chính phủ số và danh tính số đều đang hướng tới VC và DID thay vì lưu trữ trực tiếp giấy tờ trên blockchain. Việc chuyển hướng nghiên cứu sang VC giúp luận văn có chiều sâu học thuật hơn và phù hợp hơn với bối cảnh công nghệ hiện tại.
+
+\subsection{So sánh VC với mô hình NFT/SBT đã có}
+
+Để làm rõ hơn quyết định chuyển hướng, nhóm đã so sánh hai cách tiếp cận như sau:
+
+\begin{itemize}
+    \item Với mô hình \textbf{NFT/SBT}, chứng chỉ được gắn trực tiếp với một token trên blockchain. Điều này thuận tiện cho việc minh hoạ quyền sở hữu, nhưng chưa phản ánh đầy đủ bản chất của một văn bằng hay chứng nhận.
+    \item Với mô hình \textbf{VC}, chứng chỉ là một tài liệu số có chữ ký, trong đó blockchain chỉ hỗ trợ quá trình xác minh thông qua trust anchor, issuer registry hoặc revocation status.
+\end{itemize}
+
+Từ đó, nhóm kết luận rằng:
+\begin{itemize}
+    \item NFT/SBT phù hợp để xây dựng nguyên mẫu blockchain-native;
+    \item VC phù hợp hơn để tiếp tục phát triển luận văn theo hướng thực tiễn và chuẩn hoá.
+\end{itemize}
+
+\section{Decentralized Identifier (DID)}
+
+\subsection{Khái niệm DID}
+
+\textit{Decentralized Identifier} là một chuẩn định danh số phi tập trung, được thiết kế để cho phép một thực thể có thể tự quản lý danh tính và khoá mật mã của mình mà không phải phụ thuộc hoàn toàn vào một cơ quan cấp phát định danh trung tâm.
+
+Một DID thường có dạng:
+\begin{center}
+\texttt{did:method:identifier}
+\end{center}
+
+Ví dụ:
+\begin{itemize}
+    \item \texttt{did:key:...}
+    \item \texttt{did:web:...}
+    \item \texttt{did:ethr:...}
+\end{itemize}
+
+Khác với email, tài khoản mạng xã hội hoặc mã số tài khoản do một tổ chức quản lý, DID gắn với một \textit{DID Document}, trong đó chứa các thông tin như:
+\begin{itemize}
+    \item public key;
+    \item phương thức xác thực;
+    \item endpoint dịch vụ;
+    \item các khoá dùng để verify chữ ký.
+\end{itemize}
+
+\subsection{Vai trò của DID trong hệ thống chứng chỉ số}
+
+Trong hệ thống chứng chỉ số, DID có thể được sử dụng cho cả issuer và holder.
+
+\paragraph{Đối với issuer,}
+DID giúp định danh rõ đơn vị phát hành chứng chỉ và liên kết với public key để verifier có thể kiểm tra chữ ký số trên VC.
+
+\paragraph{Đối với holder,}
+DID cho phép gắn chứng chỉ với một định danh số tự chủ, thay vì chỉ gắn với một tài khoản nội bộ hoặc một địa chỉ ví thuần tuý. Điều này đặc biệt hữu ích khi hệ thống cần tiến tới các cơ chế ownership proof hoặc selective disclosure.
+
+Nhóm xác định rằng DID không nhất thiết phải được hiện thực đầy đủ ngay trong giai đoạn đầu của luận văn, nhưng về mặt lý thuyết, đây là một thành phần rất quan trọng để kiến trúc Hybrid có khả năng mở rộng trong tương lai.
+
+\subsection{DID và ví blockchain}
+
+Một điểm nhóm cần làm rõ trong quá trình nghiên cứu là sự khác nhau giữa DID và địa chỉ ví blockchain.
+
+Địa chỉ ví blockchain có thể xem là một định danh kỹ thuật gắn với một cặp khoá công khai/bí mật, rất thuận tiện để chứng minh quyền sở hữu thông qua chữ ký. Tuy nhiên, ví blockchain không tự động mang đầy đủ ngữ nghĩa của một danh tính số.
+
+Trong khi đó, DID có thể:
+\begin{itemize}
+    \item ánh xạ tới nhiều public key;
+    \item mang thêm thông tin về phương thức xác thực;
+    \item hỗ trợ nhiều chuẩn và mô hình định danh khác nhau;
+    \item không bị ràng buộc tuyệt đối vào một blockchain cụ thể.
+\end{itemize}
+
+Vì vậy, trong phạm vi luận văn, nhóm xem ví blockchain như một cách tiếp cận đơn giản để hiện thực ownership proof trước mắt, còn DID là mô hình định danh đầy đủ hơn trong định hướng lâu dài.
+
+\section{Ownership Proof}
+
+\subsection{Vấn đề cần giải quyết}
+
+Trong mô hình chứng chỉ số, việc verifier kiểm tra một chứng chỉ \textbf{hợp lệ} chưa đồng nghĩa với việc người đang trình chứng chỉ \textbf{thực sự là chủ sở hữu}. Đây là điểm rất quan trọng mà nhóm nhận ra trong quá trình chuyển từ mô hình token-centric sang VC-centric.
+
+Ví dụ, nếu một verifier chỉ quét QR và truy xuất được một chứng chỉ hợp lệ, hệ thống chỉ chứng minh được rằng:
+\begin{itemize}
+    \item chứng chỉ tồn tại;
+    \item chứng chỉ được issuer hợp lệ phát hành;
+    \item chứng chỉ chưa bị thu hồi;
+    \item nội dung chưa bị chỉnh sửa.
+\end{itemize}
+
+Tuy nhiên, verifier chưa thể biết chắc người đang đưa ra QR hoặc file chứng chỉ có đúng là chủ thể được cấp hay không. Đây là khoảng trống giữa \textit{validity verification} và \textit{ownership proof}.
+
+\subsection{Khái niệm ownership proof}
+
+\textit{Ownership proof} là cơ chế cho phép holder chứng minh rằng mình thực sự kiểm soát định danh hoặc khoá bí mật gắn với chứng chỉ. Nói cách khác, đây là lớp xác minh bổ sung để trả lời câu hỏi:
+\begin{quote}
+``Người đang trình chứng chỉ có thực sự là chủ sở hữu của chứng chỉ đó hay không?''
+\end{quote}
+
+Trong môi trường blockchain hoặc DID, ownership proof thường được hiện thực thông qua cơ chế \textit{challenge--response}:
+\begin{itemize}
+    \item verifier hoặc hệ thống tạo ra một thông điệp thử thách (\textit{challenge});
+    \item holder dùng private key của mình để ký challenge đó;
+    \item verifier kiểm tra chữ ký để xác nhận holder thực sự kiểm soát khoá tương ứng.
+\end{itemize}
+
+\subsection{Tại sao ownership proof quan trọng với bài toán chứng chỉ?}
+
+Ownership proof đặc biệt quan trọng vì chứng chỉ học tập khác với các thông tin chỉ cần kiểm tra tính toàn vẹn. Trong thực tế, nhà tuyển dụng không chỉ muốn biết chứng chỉ là thật, mà còn cần biết người đang nộp hồ sơ có thực sự là người được cấp chứng chỉ hay không.
+
+Nếu không có ownership proof, hệ thống verify chỉ giải quyết được bài toán:
+\begin{quote}
+``Chứng chỉ này có hợp lệ không?''
+\end{quote}
+mà chưa giải quyết được bài toán:
+\begin{quote}
+``Người này có thực sự sở hữu chứng chỉ đó không?''
+\end{quote}
+
+Vì vậy, trong quá trình nghiên cứu, nhóm xác định ownership proof là một thành phần quan trọng cần đưa vào phần sau của luận văn, ít nhất ở mức nguyên mẫu thông qua việc sử dụng ví blockchain để ký challenge.
+
+\subsection{Mức độ hiện thực ownership proof trong phạm vi luận văn}
+
+Do ownership proof có thể được triển khai ở nhiều mức độ khác nhau, nhóm chủ động giới hạn phạm vi như sau:
+\begin{itemize}
+    \item Trong phạm vi trước mắt, ownership proof sẽ được nghiên cứu và hiện thực ở mức tối thiểu thông qua \textit{challenge--response} bằng ví blockchain hoặc public/private key của holder.
+    \item DID được giữ lại như một định hướng kiến trúc đúng đắn về mặt học thuật, nhưng không bắt buộc phải hiện thực đầy đủ toàn bộ hạ tầng DID method và DID resolution trong phiên bản nguyên mẫu.
+\end{itemize}
+
+Cách tiếp cận này cho phép luận văn vừa giải quyết được vấn đề ownership proof ở mức có thể demo và kiểm thử, vừa giữ được chiều sâu nghiên cứu cho các bước mở rộng tiếp theo.
+
+\section{Kết luận của phần nghiên cứu nền tảng}
+
+Trong 7 tuần đầu, việc nghiên cứu W3C Verifiable Credentials, DID và ownership proof đã giúp nhóm xác định rõ hơn nền tảng lý thuyết cho kiến trúc Hybrid. Nếu VC cung cấp mô hình biểu diễn chứng chỉ phù hợp hơn với bản chất của một chứng nhận học thuật, thì DID đóng vai trò là định danh số phi tập trung cho các thực thể tham gia, còn ownership proof giúp bổ sung lớp xác minh quan trọng giữa chứng chỉ hợp lệ và người trình chứng chỉ.
+
+Những nghiên cứu này không chỉ giúp làm rõ hướng phát triển tiếp theo của hệ thống, mà còn tạo cơ sở trực tiếp cho các bước thiết kế và hiện thực trong các tuần sau, bao gồm: xây dựng VC schema, thiết kế issuer service, lựa chọn trust anchor on-chain và hiện thực verify flow phù hợp với mô hình mới.

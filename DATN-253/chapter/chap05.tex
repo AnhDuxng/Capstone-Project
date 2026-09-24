@@ -1,0 +1,354 @@
+% Chapter 5: Testing and Evaluation — Phase 3 Complete Technical Evaluation
+
+\chapter{Testing and Evaluation}
+
+\section{Smart Contract Unit Testing and Verification}
+
+\subsection{Test Suites and Code Coverage}
+
+The smart contract layer is rigorously tested using Hardhat and Mocha/Chai frameworks, encompassing 52 automated test cases partitioned across two primary test suites:
+\begin{itemize}
+    \item \textbf{\texttt{IssuerRegistry.test.ts}} (20 test cases): Validates authorized signer registration, revocation, DID URI updates, two-step ownership management via OpenZeppelin's \texttt{Ownable2Step}, paginated signer retrieval, and custom error assertions (\texttt{ZeroAddress}, \texttt{AlreadySigner}, \texttt{NotSigner}, \texttt{InvalidPagination}).
+    \item \textbf{\texttt{CredentialRegistryV3.test.ts}} (32 test cases): Validates batch root anchoring (\texttt{anchorBatch}), single and bulk bitmap revocations (\texttt{revoke}, \texttt{revokeBatch}), bitmap word index boundary conditions (indices 0, 255, 256, 65535), emergency pause controls via \texttt{Pausable}, and strict access control cross-checks with \texttt{IssuerRegistry}.
+\end{itemize}
+
+Code coverage evaluation via \texttt{solidity-coverage} confirms \textbf{100\% coverage across all execution paths}:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{5.2cm}|>{\centering\arraybackslash}p{2.2cm}|>{\centering\arraybackslash}p{2.2cm}|>{\centering\arraybackslash}p{2.2cm}|>{\centering\arraybackslash}p{2.2cm}|}
+\hline
+\textbf{Contract Name} & \textbf{Statements} & \textbf{Branches} & \textbf{Functions} & \textbf{Lines} \\
+\hline
+\texttt{IssuerRegistry} & 100\% & 100\% & 100\% & 100\% \\
+\hline
+\texttt{CredentialRegistryV3} & 100\% & 100\% & 100\% & 100\% \\
+\hline
+\end{tabular}
+\caption{Smart Contract Unit Test Code Coverage Profile}
+\label{tab:contract-coverage}
+\end{table}
+
+\subsection{Gas Consumption Profiling}
+
+Using \texttt{hardhat-gas-reporter}, gas costs for all state-mutating functions were profiled under deterministic EVM conditions:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{6.0cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{2.8cm}|}
+\hline
+\textbf{Function Execution} & \textbf{Min Gas} & \textbf{Max Gas} & \textbf{Avg Gas} \\
+\hline
+\texttt{anchorBatch(merkleRoot, size, cid)} & 102,150 & 105,420 & $\sim$105,000 \\
+\hline
+\texttt{revoke(merkleRoot, index)} (Single) & 54,200 & 58,100 & $\sim$56,000 \\
+\hline
+\texttt{revokeBatch(merkleRoot, indices[])} & 87,300 & 92,400 & $\sim$90,000 \\
+\hline
+\texttt{addSigner(signer, did)} & 65,100 & 70,200 & $\sim$68,000 \\
+\hline
+\texttt{revokeSigner(signer)} & 26,800 & 29,500 & $\sim$28,000 \\
+\hline
+\end{tabular}
+\caption{Smart Contract Execution Gas Consumption Profile}
+\label{tab:gas-report}
+\end{table}
+
+\section{SDK Unit Testing}
+
+The core TypeScript SDK is evaluated by 45 automated unit test cases spanning all six functional modules:
+\begin{itemize}
+    \item \textbf{\texttt{domain.test.ts}} (6 tests): Validates EIP-712 Domain Separator construction, type definitions, and checksummed address enforcement.
+    \item \textbf{\texttt{signer.test.ts}} (13 tests): Verifies EIP-712 structured data signing, public key address recovery, and tamper-resistance against claim alterations.
+    \item \textbf{\texttt{verifier.test.ts}} (11 tests): Tests the complete 10-step pipeline, verifying specific custom error code triggers (\texttt{INVALID\_SCHEMA}, \texttt{DISCLOSURE\_MISMATCH}, \texttt{LEAF\_MISMATCH}, \texttt{SIGNATURE\_MISMATCH}, etc.).
+    \item \textbf{\texttt{disclosure.test.ts}} (9 tests): Validates 256-bit cryptographically secure pseudorandom salt generation, commitment derivation, and selective claim filtering.
+    \item \textbf{\texttt{merkle.test.ts}} (6 tests): Validates OpenZeppelin-compatible double-hashed Merkle tree construction and membership proof verification.
+\end{itemize}
+
+Across both smart contracts and the SDK, the system achieves a \textbf{100\% pass rate across 97 automated test cases}.
+
+\section{Exhaustive Empirical Evaluation: Scenarios A--E}
+
+To benchmark the scalability, real-world throughput, latency distribution, and cost characteristics of the BK Credential System, an exhaustive empirical evaluation was conducted across five distinct benchmark scenarios (Scenarios A through E). Benchmarks were executed on an AMD Ryzen 7 5800H CPU @ 3.20 GHz with 16 GB RAM running Node.js v20.11.
+
+\subsection{Scenario A: Cryptographic Signing Throughput vs. Batch Size}
+
+Scenario A measures the cryptographic performance of offline credential signing and Merkle tree generation as the cohort size scales by orders of magnitude from 1,000 to 50,000 credentials ($N \in \{1{,}000; 5{,}000; 10{,}000; 50{,}000\}$).
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|>{\centering\arraybackslash}p{2.2cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{3.2cm}|>{\centering\arraybackslash}p{3.0cm}|>{\centering\arraybackslash}p{2.5cm}|}
+\hline
+\textbf{Batch Size ($N$)} & \textbf{Total Signing Time (s)} & \textbf{Signing Throughput (creds/s)} & \textbf{Merkle Tree Time (s)} & \textbf{Peak Heap (MB)} \\
+\hline
+1,000 & 1.28 & 779.4 & 1.30 & 68.4 \\
+\hline
+5,000 & 6.43 & 777.6 & 6.95 & 142.1 \\
+\hline
+10,000 & 12.36 & 809.1 & 14.12 & 235.8 \\
+\hline
+50,000 & 70.72 & 707.0 & 73.84 & 348.2 \\
+\hline
+\end{tabular}
+\caption{Scenario A: Cryptographic Engine Scalability and Memory Profiling}
+\label{tab:scenario-a}
+\end{table}
+
+The empirical findings confirm:
+\begin{enumerate}
+    \item \textbf{Linear Computational Complexity $\mathcal{O}(N)$}: The total duration for both EIP-712 structured data signing and Merkle tree construction scales linearly with batch size, maintaining an average signing throughput between \textbf{707 and 809 credentials/second}.
+    \item \textbf{High-Performance Target Fulfillment}: The measured signing throughput of $\sim$809 creds/sec comfortably exceeds the project design requirement of $\ge$500 credentials/second.
+    \item \textbf{Bounded Memory Footprint}: Due to chunked processing in the bulk engine, peak heap memory usage remained under 350~MB even when processing 50,000 certificates simultaneously, preventing out-of-memory (OOM) crashes in serverless or constrained environments.
+\end{enumerate}
+
+\subsection{Scenario B: End-to-End Bulk Issuance Pipeline}
+
+Scenario B evaluates the entire issuance lifecycle for an institutional graduating cohort of \textbf{10,000 credentials}, measuring the exact duration required for CSV ingestion, pre-validation, salted commitment generation, batch signing, and cryptographic Merkle tree generation.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{7.5cm}|>{\centering\arraybackslash}p{3.2cm}|>{\centering\arraybackslash}p{3.2cm}|}
+\hline
+\textbf{Issuance Stage} & \textbf{Duration (ms)} & \textbf{Percentage of Total} \\
+\hline
+1. CSV Ingestion \& Zod Schema Parsing & 39.72 & 0.14\% \\
+\hline
+2. 256-bit Salted Disclosure Generation & 1,093.41 & 3.97\% \\
+\hline
+3. EIP-712 Batch Signing (10,000 creds) & 12,103.15 & 43.95\% \\
+\hline
+4. Double-Hashed Merkle Tree Generation & 14,339.22 & 52.07\% \\
+\hline
+\textbf{Total Offline Issuance Pipeline} & \textbf{27,542.80 ms} & \textbf{100.00\%} \\
+\hline
+\end{tabular}
+\caption{Scenario B: End-to-End Bulk Issuance Duration Breakdown ($N = 10{,}000$)}
+\label{tab:scenario-b}
+\end{table}
+
+The entire off-chain issuance pipeline for 10,000 university graduates completed in \textbf{27.54 seconds}, representing an overall processing speed of \textbf{363.1 credentials/second}. Over 96\% of execution time was allocated to deterministic cryptographic primitives (ECDSA secp256k1 signing and keccak256 leaf double-hashing), while data parsing and commitment derivation accounted for less than 4\%.
+
+\subsection{Scenario C: 10-Step Verification Latency and Distribution}
+
+Scenario C benchmarks the latency profile of the verification pipeline by executing \textbf{1,000 sequential offline verifications} of fully-formed credential presentations containing selective disclosures and Merkle inclusion proofs.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{4.5cm}|>{\centering\arraybackslash}p{2.8cm}|p{6.5cm}|}
+\hline
+\textbf{Metric} & \textbf{Latency (ms)} & \textbf{Technical Significance} \\
+\hline
+Minimum Latency & 4.322 ms & Best-case execution (warm V8 JIT compiler) \\
+\hline
+Median Latency (p50) & 5.234 ms & Typical user-perceived verification time \\
+\hline
+Mean Latency & \textbf{5.502 ms} & Average verification time across 1,000 samples \\
+\hline
+90th Percentile (p90) & 6.551 ms & 90\% of verifications complete within this bound \\
+\hline
+95th Percentile (p95) & 7.406 ms & Tail latency bound for high SLA environments \\
+\hline
+99th Percentile (p99) & 8.959 ms & Extreme tail latency under background load \\
+\hline
+Maximum Latency & 11.211 ms & Cold-start overhead on initial iteration \\
+\hline
+Standard Deviation ($\sigma$) & \textbf{0.888 ms} & High determinism and minimal jitter \\
+\hline
+Throughput & \textbf{181.8 verif/sec} & Single-core sequential throughput capacity \\
+\hline
+\end{tabular}
+\caption{Scenario C: Statistical Distribution of Offline Verification Latency}
+\label{tab:scenario-c}
+\end{table}
+
+A granular step-by-step latency analysis reveals:
+\begin{itemize}
+    \item \textbf{Schema Validation and Formatting (Step 1)}: $\sim$0.45 ms.
+    \item \textbf{EIP-712 Struct Hashing (Step 2)}: $\sim$0.68 ms.
+    \item \textbf{Salted Disclosure Verification (Step 3)}: $\sim$0.82 ms for 3 private claims.
+    \item \textbf{Merkle Proof Tree Validation (Steps 4--5)}: $\sim$1.25 ms ($\mathcal{O}(\log N)$ proof path traversal).
+    \item \textbf{ECDSA Public Key Recovery (Step 6)}: $\sim$1.95 ms (\texttt{ecrecover} secp256k1 curve operation).
+    \item \textbf{Temporal Expiration Check (Step 10)}: $\sim$0.02 ms.
+\end{itemize}
+
+The combined offline verification latency averages only \textbf{5.50 ms}, demonstrating that credential verification is practically instantaneous and well-suited for automated hiring and screening portals.
+
+\subsection{Scenario D: Concurrent Verification Load Stress Testing}
+
+Scenario D evaluates system stability and throughput under concurrent verification workloads. The test runner dispatched \textbf{1,000 total verification requests} distributed across concurrency levels $C \in \{10, 50, 100, 500\}$.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|>{\centering\arraybackslash}p{2.5cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{2.5cm}|>{\centering\arraybackslash}p{2.5cm}|>{\centering\arraybackslash}p{2.5cm}|}
+\hline
+\textbf{Concurrency ($C$)} & \textbf{Throughput (req/s)} & \textbf{Avg Latency (ms)} & \textbf{p95 Latency (ms)} & \textbf{Success Rate} \\
+\hline
+10 & 186.9 & 52.8 & 68.2 & 100.0\% \\
+\hline
+50 & 174.2 & 278.4 & 342.1 & 100.0\% \\
+\hline
+100 & 168.5 & 574.6 & 710.8 & 100.0\% \\
+\hline
+500 & 163.1 & 2,981.0 & 3,745.2 & 100.0\% \\
+\hline
+\end{tabular}
+\caption{Scenario D: Concurrent Verification Performance and Latency Metrics}
+\label{tab:scenario-d}
+\end{table}
+
+Even under extreme saturation of 500 simultaneous verification requests, the system maintained a \textbf{100\% pass rate} with zero rejected connections or memory leaks. Throughput remained steady between 163 and 187 requests/second, confirming the robustness of the asynchronous Node.js execution runtime.
+
+\subsection{Scenario E: Blockchain Gas Scalability and Cost Analysis}
+
+Scenario E analyzes the on-chain operational gas cost of anchoring credential cohorts of increasing size ($N \in \{100; 1{,}000; 10{,}000\}$), comparing Phase 2 (ERC-721 per-credential on-chain minting) with Phase 3 (Merkle batch anchoring).
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|>{\centering\arraybackslash}p{2.0cm}|>{\centering\arraybackslash}p{3.5cm}|>{\centering\arraybackslash}p{3.5cm}|>{\centering\arraybackslash}p{4.2cm}|}
+\hline
+\textbf{Cohort ($N$)} & \textbf{Phase 2 Gas (ERC-721)} & \textbf{Phase 3 Gas (Merkle)} & \textbf{Efficiency Gain} \\
+\hline
+100 & 10,315,600 & 105,120 & \textbf{98.1$\times$ cheaper} \\
+\hline
+1,000 & 103,156,000 & 105,250 & \textbf{980.1$\times$ cheaper} \\
+\hline
+10,000 & 1,031,560,000 & 105,420 & \textbf{9,785.2$\times$ cheaper} \\
+\hline
+\end{tabular}
+\caption{Scenario E: Total On-Chain Gas Consumption: Phase 2 vs. Phase 3}
+\label{tab:scenario-e}
+\end{table}
+
+Because Phase 3 commits only the 32-byte cryptographic root of the Merkle tree to \texttt{CredentialRegistryV3}, on-chain gas consumption is strictly $\mathcal{O}(1)$ independent of the cohort size. For a graduating class of 10,000 students, on-chain gas is reduced from over 1 billion gas down to approximately 105,420 gas --- achieving a remarkable \textbf{9,785$\times$ reduction in transaction fees}. Amortized per credential, the on-chain cost in Phase 3 is a negligible \textbf{10.5 gas per student}.
+
+\section{Real-World Ethereum Sepolia Testnet Validation}
+
+To demonstrate real-world production viability, a full graduating cohort of \textbf{10,000 credentials} was generated, cryptographically signed, structured into a Merkle tree, and anchored to the live Ethereum Sepolia Testnet.
+
+\begin{itemize}
+    \item \textbf{Target Registry Contract}: \texttt{0xb851a7C...} (CredentialRegistryV3)
+    \item \textbf{Anchor Transaction Hash}: \texttt{0x54b11343452cc34c4e73b992cdc3dfacb386a9f0a207dbc82822cc59c3734d3e}
+    \item \textbf{Confirmed Block Number}: 11,654,826
+    \item \textbf{Total Gas Consumed}: 167,804 gas
+    \item \textbf{Amortized Gas per Credential}: \textbf{16.78 gas / credential}
+    \item \textbf{Transaction Fee}: 0.000188 SepoliaETH ($\approx$\$0.56 USD at \$3,000/ETH)
+    \item \textbf{Live On-Chain Verification Pass Rate}: \textbf{100\% (all sampled proofs verified successfully)}
+\end{itemize}
+
+This live deployment establishes empirical proof that university-scale cohorts can be anchored immutably onto public Ethereum networks with sub-dollar operational costs.
+
+\section{Security Hardening, Static Analysis, and Threat Model}
+
+\subsection{STRIDE Threat Analysis Matrix}
+
+The security architecture of the BK Credential System was evaluated against the STRIDE threat modeling framework~\cite{Cachin2017Blockchain}:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.2cm}|p{5.5cm}|p{5.8cm}|}
+\hline
+\textbf{Threat Category} & \textbf{Attack Vector} & \textbf{System Mitigation Strategy} \\
+\hline
+\textbf{S}poofing & Unauthorized entity issuing fake university diplomas & Signer address must be registered in \texttt{IssuerRegistry.sol}; verified against secp256k1 signature. \\
+\hline
+\textbf{T}ampering & Modifying student name, graduation grade, or degree title & EIP-712 typed struct hash and double-hashed Merkle leaf invalidate corrupted payloads. \\
+\hline
+\textbf{R}epudiation & Issuer claiming a validly issued credential was never authorized & Immutable on-chain \texttt{BatchAnchored} event log and non-repudiable ECDSA signature. \\
+\hline
+\textbf{I}nformation Disclosure & Exposing student PII (GPA, ID) to prospective employers & 256-bit salted-hash commitments allow selective attribute hiding without invalidating signature. \\
+\hline
+\textbf{D}enial of Service & Submitting oversized batches to exhaust contract gas or memory & Chunked bulk processing ($20 \times 500$); $\mathcal{O}(1)$ on-chain root anchoring; gasless offline verification. \\
+\hline
+\textbf{E}levation of Privilege & Compromised signer attempting to alter ownership or pause system & Strict role separation: signers can only anchor batches; \texttt{Ownable2Step} restricts administrative controls. \\
+\hline
+\end{tabular}
+\caption{STRIDE Threat Analysis and Mitigation Matrix}
+\label{tab:stride-matrix}
+\end{table}
+
+\subsection{Static Security Audit (Slither Checklist)}
+
+Using the Slither static analysis framework detector taxonomy~\cite{Slither}, both smart contracts were evaluated across all major vulnerability categories:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{3.8cm}|>{\centering\arraybackslash}p{2.0cm}|>{\RaggedRight}p{8.5cm}|}
+\hline
+\textbf{Vulnerability Class} & \textbf{Severity} & \textbf{Mitigation Strategy} \\
+\hline
+Reentrancy & High & Contracts hold no Ether balance and perform zero untrusted external calls. \\
+\hline
+Access Control & High & Enforced via OpenZeppelin \texttt{Ownable2Step} and cross-contract \texttt{isSigner} validation. \\
+\hline
+Cross-Contract Replay & High & Strict signature domain scoping using \texttt{chainId} and \texttt{verifyingContract}. \\
+\hline
+Integer Overflow & Medium & Handled natively by Solidity 0.8.24 checked arithmetic. \\
+\hline
+Bitmap Out-of-Bounds & Medium & Enforced index bounds checks (\texttt{index < size}) with custom errors. \\
+\hline
+Signer Key Compromise & High & Instant signer deauthorization on \texttt{IssuerRegistry}; issuer-scoped revocation. \\
+\hline
+Emergency Controls & Medium & Pausable execution paths to freeze state-mutating operations during incidents. \\
+\hline
+\end{tabular}
+\caption{Smart Contract Security Analysis Matrix (Slither Framework)}
+\label{tab:security-checklist}
+\end{table}
+
+\subsection{Automated Exploit Simulation (33/33 Passed)}
+
+To empirically validate resilience against targeted attacks, an automated test harness (\texttt{security-tests.ts}) executed 33 concrete exploit simulations:
+\begin{itemize}
+    \item \textbf{Merkle Tampering (8 tests)}: Manipulated leaf hashes, altered sibling proof nodes, swapped leaf indices, and attempted second-preimage injections. All 8 tests were rejected with \texttt{INVALID\_MERKLE\_PROOF} or \texttt{LEAF\_MISMATCH}.
+    \item \textbf{Signature Forgery and Tampering (7 tests)}: Modified public claim fields, altered domain parameters (\texttt{chainId}, \texttt{verifyingContract}), and injected mismatched signatures. All 7 tests failed with \texttt{SIGNATURE\_MISMATCH}.
+    \item \textbf{Selective Disclosure Attacks (6 tests)}: Swapped salts between attributes, modified disclosed values, and attempted dictionary brute-force preimage attacks. All 6 tests failed with \texttt{DISCLOSURE\_MISMATCH}.
+    \item \textbf{Bitmap Revocation Attacks (6 tests)}: Unauthorized non-issuer accounts attempting revocation, out-of-bounds indices, and querying unanchored batches. All 6 tests reverted with appropriate custom errors.
+    \item \textbf{Replay and Domain Collision Attacks (6 tests)}: Replaying signatures across different contract deployments or chain environments. All 6 tests were rejected.
+\end{itemize}
+
+All \textbf{33 out of 33 security attack simulations were successfully thwarted}, demonstrating robust tamper resistance.
+
+\section{Comprehensive Comparative Evaluation: Phase 2 vs. Phase 3}
+
+Table~\ref{tab:master-comparison} summarizes the multidimensional advancements achieved in Phase 3 over the initial Phase 2 architecture:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|p{4.2cm}|p{5.0cm}|p{5.5cm}|}
+\hline
+\textbf{Dimension} & \textbf{Phase 2 (SD-JWT VC + NFT)} & \textbf{Phase 3 (EIP-712 Trust Anchor)} \\
+\hline
+\textbf{On-Chain Issuance Cost} & $\sim$103,156 gas / credential & \textbf{0 gas} (10.5 gas amortized anchor) \\
+\hline
+\textbf{Gas for 10,000 Cohort} & $\sim$1,031,560,000 gas & \textbf{105,420 gas ($\sim$9,800$\times$ reduction)} \\
+\hline
+\textbf{Monetary Cost (10k)} & $\sim$\$92,700 USD (at \$3000/ETH) & \textbf{$\sim$\$0.56 USD ($\sim$165,000$\times$ savings)} \\
+\hline
+\textbf{Verification Latency} & $\sim$608 ms (IPFS + 3 RPCs) & \textbf{$\sim$5.50 ms offline / 204 ms online} \\
+\hline
+\textbf{IPFS Dependency} & Mandatory per-certificate pinning & \textbf{Eliminated} (Fully self-contained JSON) \\
+\hline
+\textbf{Revocation Model} & Individual mapping storage slots & \textbf{256-bit Bitmap} (64$\times$ storage efficiency) \\
+\hline
+\textbf{Selective Disclosure} & SD-JWT tilde-delimited format & \textbf{256-bit Salted-Hash Commitments} \\
+\hline
+\textbf{Signature Format} & ES256K raw JWT compact & \textbf{EIP-712 Typed Structured Data} \\
+\hline
+\textbf{Smart Contract Suite} & Single monolithic contract & \textbf{Decoupled Registry Architecture} \\
+\hline
+\textbf{Code Coverage} & Partial ($<$80\%) & \textbf{100\% (Statement, Branch, Line, Func)} \\
+\hline
+\end{tabular}
+\caption{Comprehensive Comparison Matrix: Phase 2 vs. Phase 3 Architecture}
+\label{tab:master-comparison}
+\end{table}

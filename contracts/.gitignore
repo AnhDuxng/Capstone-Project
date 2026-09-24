@@ -38,3 +38,6 @@ ignition/deployments/
 
 # TypeScript
 *.tsbuildinfo
+
+# Generated fixtures (Phase 3)
+fixtures/

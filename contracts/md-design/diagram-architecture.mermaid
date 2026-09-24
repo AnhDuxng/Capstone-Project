@@ -1,0 +1,40 @@
+flowchart TB
+    subgraph OFF_CHAIN["🔒 OFF-CHAIN LAYER (Zero gas)"]
+        direction TB
+        A["Issuer Portal<br/>(CSV upload)"] --> B["EIP-712 SDK"]
+        B --> C["Sign 10.000 credentials<br/>off-chain với EIP-712"]
+        B --> D["Selective Disclosure<br/>salted-hash commitments"]
+        B --> E["Merkle Tree Builder<br/>10.000 leaves → 1 root"]
+    end
+
+    subgraph ON_CHAIN["⛓️ ON-CHAIN TRUST ANCHOR (Sepolia)"]
+        direction TB
+        F["IssuerRegistry<br/>- addSigner<br/>- revokeSigner<br/>- isSigner"]
+        G["CredentialRegistry<br/>- anchorBatch (1 tx / batch)<br/>- revoke (bitmap)<br/>- isRevoked"]
+    end
+
+    subgraph HOLDER["👤 HOLDER LAYER"]
+        direction TB
+        H["Holder Portal<br/>- Magic link login<br/>- SD toggle UI<br/>- Download JSON"]
+    end
+
+    subgraph VERIFY["✓ VERIFIER LAYER"]
+        direction TB
+        I["Verify Portal / CLI<br/>bk-verify-v3"]
+        J["Offline steps:<br/>1. Schema validation<br/>2. Recompute publicClaimsHash<br/>3. Verify disclosures<br/>4. Merkle proof<br/>5. EIP-712 signature recovery"]
+        K["Online steps (2 eth_call):<br/>6. isSigner(issuer)<br/>7. getAnchor + isRevoked"]
+    end
+
+    C -->|credentials.json + sig| H
+    E -->|merkleRoot| G
+    A -->|addSigner| F
+    H -->|share credential-sd.json| I
+    I --> J
+    J -->|recovered signer| F
+    J -->|merkleRoot| G
+    I --> K
+
+    style OFF_CHAIN fill:#e1f5ff,stroke:#0288d1
+    style ON_CHAIN fill:#fff3e0,stroke:#f57c00
+    style HOLDER fill:#f3e5f5,stroke:#7b1fa2
+    style VERIFY fill:#e8f5e9,stroke:#388e3c

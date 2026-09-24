@@ -5,7 +5,11 @@
   "license": "MIT",
   "scripts": {
     "compile": "hardhat compile",
+    "test": "hardhat test",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "deploy:v3:sepolia": "hardhat run scripts/deploy-v3.ts --network sepolia",
+    "deploy:v3:local": "hardhat run scripts/deploy-v3.ts --network hardhat",
+    "generate:fixtures": "ts-node scripts/fixtures/generate-10k.ts",
     "verify:sepolia": "hardhat verify --network sepolia"
   },
   "devDependencies": {
@@ -19,7 +23,7 @@
     "@nomicfoundation/ignition-core": "^0.15.15",
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
-    "@types/chai": "^5.2.3",
+    "@types/chai": "^4.2.0",
     "@types/mocha": "^10.0.10",
     "chai": "^4.0.0",
     "dotenv": "^17.2.3",
@@ -33,6 +37,8 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
-    "@types/node": "^25.0.3"
+    "@openzeppelin/merkle-tree": "^1.0.8",
+    "@types/node": "^25.0.3",
+    "zod": "^4.4.3"
   }
 }

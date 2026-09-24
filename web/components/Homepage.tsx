@@ -1,494 +1,289 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Shield, Upload, Search, ArrowRight, Loader2 } from "lucide-react";
-import jsQR from "jsqr";
-import toast from "react-hot-toast";
-import { checkUserRole } from "@/lib/roles";
-import { verifyCertificate, VerifyResult } from "@/lib/verify";
+import {
+  Shield,
+  FileCheck,
+  UserCheck,
+  Settings,
+  ArrowRight,
+  Zap,
+  Lock,
+  Eye,
+  Layers,
+} from "lucide-react";
 
-interface HomepageProps {
-  onLogin: (name: string, walletAddress?: string) => void;
-  onVerificationResult?: (result: VerifyResult) => void;
-}
-
-export function Homepage({ onLogin, onVerificationResult }: HomepageProps) {
-  const [activeTab, setActiveTab] = useState<'verify' | 'student'>('verify');
-  const [certificateId, setCertificateId] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [checkingRole, setCheckingRole] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  
-  // Privy hooks
-  const { ready, authenticated, user, login, logout } = usePrivy();
-  const { wallets } = useWallets();
-  const router = useRouter();
-
-  // Handle Privy login
-  const handlePrivyLogin = async () => {
-    try {
-      await login();
-    } catch (error) {
-      console.error('Login failed:', error);
-      toast.error('Failed to login. Please try again.');
-    }
-  };
-
-  // Auto-redirect when user is authenticated
-  useEffect(() => {
-    if (ready && authenticated && user && wallets && wallets.length > 0 && !checkingRole) {
-      const checkRoleAndRedirect = async () => {
-        setCheckingRole(true);
-        try {
-          // Extract user information
-          const userName = user.google?.name || 
-                          user.email?.address || 
-                          user.discord?.username ||
-                          user.phone?.number ||
-                          `User ${user.id.slice(0, 8)}`;
-          
-          // Get wallet address from user's wallet or linked accounts
-          const walletAddress = user.wallet?.address || 
-                               (user.linkedAccounts?.find((acc) => 
-                                 acc.type === 'wallet' && 'address' in acc
-                               ) as { address?: string } | undefined)?.address;
-          
-          // Check user role
-          const activeWallet = wallets[0];
-          if (!activeWallet) {
-            throw new Error("No wallet found");
-          }
-          const role = await checkUserRole(activeWallet as { getEthereumProvider: () => Promise<unknown> });
-          
-          // Show success toast
-          toast.success('Successfully logged in!', {
-            duration: 3000,
-            icon: '✅',
-          });
-          
-          // Redirect based on role
-          if (role.isIssuer || role.isAdmin) {
-            // Admin/Issuer: redirect to admin dashboard
-            toast.success('Redirecting to admin dashboard...', {
-              duration: 2000,
-            });
-            router.push('/admin');
-          } else {
-            // Student: redirect to student dashboard
-            onLogin(userName, walletAddress);
-          }
-        } catch (error) {
-          console.error('Error checking role:', error);
-          // On error, default to student dashboard
-          const userName = user.google?.name || 
-                          user.email?.address || 
-                          user.discord?.username ||
-                          user.phone?.number ||
-                          `User ${user.id.slice(0, 8)}`;
-          const walletAddress = user.wallet?.address || 
-                               (user.linkedAccounts?.find((acc) => 
-                                 acc.type === 'wallet' && 'address' in acc
-                               ) as { address?: string } | undefined)?.address;
-          onLogin(userName, walletAddress);
-        } finally {
-          setCheckingRole(false);
-        }
-      };
-      
-      checkRoleAndRedirect();
-    }
-  }, [ready, authenticated, user, wallets, onLogin, router, checkingRole]);
-
-  const handleVerify = async () => {
-    if (!certificateId.trim()) {
-      toast.error("Please enter a Certificate ID (Token ID)");
-      return;
-    }
-
-    // Validate that it's a valid number (token ID)
-    const tokenId = certificateId.trim();
-    if (!/^\d+$/.test(tokenId)) {
-      toast.error("Certificate ID must be a number (Token ID)");
-      return;
-    }
-
-    setVerifying(true);
-    toast.loading("Verifying certificate on blockchain...", { id: "verify" });
-    console.log("🔍 [Verify] Starting verification for tokenId:", tokenId);
-
-    try {
-      const result = await verifyCertificate(BigInt(tokenId));
-      console.log("📥 [Verify] Result:", result);
-
-      // Show appropriate toast based on result
-      switch (result.status) {
-        case "VALID":
-          toast.success("✅ Certificate is VALID!", { id: "verify", duration: 3000 });
-          break;
-        case "REVOKED":
-          toast.error("⚠️ Certificate has been REVOKED", { id: "verify", duration: 3000 });
-          break;
-        case "INVALID":
-          toast.error("❌ Certificate is INVALID (hash mismatch)", { id: "verify", duration: 3000 });
-          break;
-        case "NOT_FOUND":
-          toast.error("🔍 Certificate not found", { id: "verify", duration: 3000 });
-          break;
-        case "ERROR":
-          toast.error(`❌ Error: ${result.error}`, { id: "verify", duration: 3000 });
-          break;
-      }
-
-      // Navigate to result page
-      if (onVerificationResult) {
-        onVerificationResult(result);
-      }
-    } catch (error) {
-      console.error("❌ [Verify] Error:", error);
-      toast.error("Failed to verify certificate", { id: "verify" });
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-
-
-  const handleUploadQRCode = () => {
-    // Trigger the hidden file input click
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Check if it's an image file
-      if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file.');
-        return;
-      }
-
-      // For other images, try to decode QR code
-      // Create a FileReader to read the image
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageDataUrl = e.target?.result as string;
-        if (!imageDataUrl) {
-          toast.error('Failed to read the image file.');
-          return;
-        }
-
-        // Create an image element to load the file
-        const img = new Image();
-        img.onload = () => {
-          try {
-            // Create a canvas to extract image data
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-              toast.error('Failed to create canvas context.');
-              return;
-            }
-
-            // Set canvas size to match image
-            canvas.width = img.width;
-            canvas.height = img.height;
-
-            // Draw the image on the canvas
-            ctx.drawImage(img, 0, 0);
-
-            // Get image data from canvas
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-            // Decode QR code using jsQR
-            const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
-
-            if (qrCode) {
-              // QR code found - extract the data (should be a token ID or URL with token ID)
-              const qrData = qrCode.data;
-              console.log('QR Code detected:', qrData);
-
-              // Extract token ID from QR data
-              // Could be just a number, or a URL like "https://example.com/verify?tokenId=123"
-              let tokenId: string | null = null;
-              
-              // Try to extract tokenId from URL
-              if (qrData.includes('tokenId=')) {
-                const match = qrData.match(/tokenId=(\d+)/);
-                if (match) tokenId = match[1];
-              } else if (/^\d+$/.test(qrData.trim())) {
-                // Just a number
-                tokenId = qrData.trim();
-              }
-
-              if (tokenId) {
-                toast.success('QR Code detected! Verifying...', { duration: 2000 });
-                setCertificateId(tokenId);
-                
-                // Verify the certificate
-                setTimeout(async () => {
-                  setVerifying(true);
-                  toast.loading("Verifying certificate on blockchain...", { id: "verify-qr" });
-                  
-                  try {
-                    const result = await verifyCertificate(BigInt(tokenId));
-                    console.log("📥 [Verify QR] Result:", result);
-                    
-                    switch (result.status) {
-                      case "VALID":
-                        toast.success("✅ Certificate is VALID!", { id: "verify-qr" });
-                        break;
-                      case "REVOKED":
-                        toast.error("⚠️ Certificate has been REVOKED", { id: "verify-qr" });
-                        break;
-                      default:
-                        toast.error(`Certificate status: ${result.status}`, { id: "verify-qr" });
-                    }
-                    
-                    if (onVerificationResult) {
-                      onVerificationResult(result);
-                    }
-                  } catch (error) {
-                    console.error("❌ [Verify QR] Error:", error);
-                    toast.error("Failed to verify certificate", { id: "verify-qr" });
-                  } finally {
-                    setVerifying(false);
-                  }
-                }, 500);
-              } else {
-                toast.error('Invalid QR code format. Expected a Token ID.');
-              }
-            } else {
-              // No QR code found in the image
-              toast.error('No QR code detected in the selected image. Please make sure the image contains a valid QR code and try again.');
-            }
-          } catch (error) {
-            console.error('Error decoding QR code:', error);
-            toast.error('An error occurred while processing the QR code. Please try again with a different image.');
-          }
-        };
-
-        img.onerror = () => {
-          toast.error('Failed to load the image. Please try a different file.');
-        };
-
-        // Load the image
-        img.src = imageDataUrl;
-      };
-
-      reader.onerror = () => {
-        toast.error('Failed to read the file. Please try again.');
-      };
-
-      reader.readAsDataURL(file);
-      
-      // Reset the input so the same file can be selected again if needed
-      event.target.value = '';
-    }
-  };
-
+export function Homepage() {
   return (
-    <main className="flex-1 bg-gray-50 py-16 px-6" suppressHydrationWarning>
-      <div className="container mx-auto max-w-4xl" suppressHydrationWarning>
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          {/* Large Shield Icon */}
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-6" style={{ backgroundColor: '#0d6efd' }}>
-            <Shield className="w-10 h-10 text-white" />
+    <main className="flex-1 bg-gray-50" suppressHydrationWarning>
+      {/* ── Hero Section ── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white py-24 px-6">
+        {/* Subtle grid pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+
+        <div className="relative container mx-auto max-w-5xl text-center space-y-8">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 text-sm font-medium">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            Phase 3 — EIP-712 Trust Anchor Architecture
           </div>
 
           {/* Heading */}
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
-            Digital Certificate Verification
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.1]">
+            BK Credential System
           </h1>
 
           {/* Subtitle */}
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Blockchain-backed certificate verification system ensuring authenticity and transparency.
+          <p className="text-lg md:text-xl text-blue-200 max-w-2xl mx-auto leading-relaxed">
+            Hệ thống cấp phát và xác minh chứng chỉ số trên nền tảng Blockchain
+            — Bảo mật, Minh bạch, Chi phí tối ưu.
           </p>
-        </div>
 
-        {/* Tab Buttons */}
-        <div className="flex gap-4 justify-center mb-8">
-          <button
-            onClick={() => setActiveTab('verify')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-              activeTab === 'verify'
-                ? 'bg-white text-gray-900 shadow-md'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-            }`}
-          >
-            <Search className="w-5 h-5" />
-            Verify Certificate
-          </button>
-          <button
-            onClick={() => setActiveTab('student')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${
-              activeTab === 'student'
-                ? 'bg-white text-gray-900 shadow-md'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-            }`}
-          >
-            <ArrowRight className="w-5 h-5" />
-            Management Portal
-          </button>
-        </div>
-
-        {/* Verification Card */}
-        {activeTab === 'verify' && (
-          <Card className="bg-white rounded-2xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
-              Verify a Certificate
-            </h2>
-
-            {/* Upload QR Code Option */}
-            <div className="mb-8">
-              <button 
-                type="button"
-                className="w-full flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
-                onClick={handleUploadQRCode}
-              >
-                <Upload className="w-12 h-12" style={{ color: '#0d6efd' }} />
-                <span className="font-semibold text-lg" style={{ color: '#0d6efd' }}>
-                  Upload QR Code
-                </span>
-                <span className="text-sm text-gray-600">
-                  Select an image file containing a QR code
-                </span>
-              </button>
-            </div>
-
-            {/* Hidden File Input for Upload */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-
-            {/* Divider */}
-            <div className="flex items-center gap-4 mb-8">
-              <div className="flex-1 h-px bg-gray-300"></div>
-              <span className="text-sm text-gray-500 font-medium">
-                OR ENTER CERTIFICATE DETAILS
-              </span>
-              <div className="flex-1 h-px bg-gray-300"></div>
-            </div>
-
-            {/* Certificate ID Input */}
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="certificateId" className="block text-sm font-medium text-gray-700 mb-2">
-                  Certificate ID (Token ID)
-                </label>
-                <Input
-                  id="certificateId"
-                  type="text"
-                  placeholder="Enter Token ID (e.g., 1, 2, 3...)"
-                  value={certificateId}
-                  onChange={(e) => setCertificateId(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !verifying && handleVerify()}
-                  className="h-12"
-                  disabled={verifying}
-                />
-              </div>
-
-              {/* Verify Button */}
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            <Link href="/v3/verify">
               <Button
-                onClick={handleVerify}
-                className="w-full h-12 text-base font-semibold rounded-lg gap-2"
-                style={{ backgroundColor: '#0d6efd' }}
-                disabled={verifying}
+                size="lg"
+                className="bg-blue-500 hover:bg-blue-400 text-white font-semibold px-8 h-12 rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-400/30 hover:-translate-y-0.5"
               >
-                {verifying ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-5 w-5" />
-                    Verify Certificate
-                  </>
-                )}
+                <FileCheck className="mr-2 h-5 w-5" />
+                Xác thực Chứng chỉ
               </Button>
-            </div>
-          </Card>
-        )}
+            </Link>
+            <Link href="/holder">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/30 text-white hover:bg-white/10 font-semibold px-8 h-12 rounded-xl backdrop-blur-sm transition-all hover:-translate-y-0.5"
+              >
+                <UserCheck className="mr-2 h-5 w-5" />
+                Cổng Sinh Viên
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
 
-        {/* Student Login Card with Privy */}
-        {activeTab === 'student' && (
-          <Card className="bg-white rounded-2xl shadow-lg p-8 max-w-xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
-              Student Portal Access
+      {/* ── Feature Highlights ── */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+              Kiến trúc EIP-712 Off-Chain Signing
             </h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              Chữ ký số EIP-712 xử lý hoàn toàn off-chain, Blockchain Ethereum chỉ
+              đóng vai trò Trust Anchor bất biến cho Merkle Root và Bitmap Revocation.
+            </p>
+          </div>
 
-            {!ready ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">Loading...</p>
-              </div>
-            ) : checkingRole ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500">Checking permissions...</p>
-              </div>
-            ) : authenticated ? (
-              <div className="text-center py-8 space-y-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-                  <Shield className="w-8 h-8 text-green-600" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                icon: Zap,
+                title: "Chi phí Gas giảm 9,800×",
+                desc: "10,000 chứng chỉ chỉ tốn ~$9.45 USD (1 giao dịch anchor duy nhất).",
+                color: "text-amber-500",
+                bg: "bg-amber-50",
+              },
+              {
+                icon: Lock,
+                title: "An toàn Mật mã học",
+                desc: "Chữ ký ECDSA secp256k1, Merkle Tree double keccak256, muối ngẫu nhiên 256-bit.",
+                color: "text-blue-500",
+                bg: "bg-blue-50",
+              },
+              {
+                icon: Eye,
+                title: "Ẩn danh dữ liệu chọn lọc",
+                desc: "Sinh viên tùy chọn ẩn/hiện từng trường thông tin (Selective Disclosure).",
+                color: "text-emerald-500",
+                bg: "bg-emerald-50",
+              },
+              {
+                icon: Layers,
+                title: "Xác minh 10 bước tự động",
+                desc: "Pipeline xác thực chứng chỉ toàn diện: Schema → Chữ ký → Merkle → On-chain.",
+                color: "text-violet-500",
+                bg: "bg-violet-50",
+              },
+            ].map((f) => (
+              <Card
+                key={f.title}
+                className="p-6 rounded-2xl border border-gray-100 hover:shadow-lg transition-all hover:-translate-y-1 bg-white"
+              >
+                <div
+                  className={`inline-flex items-center justify-center w-12 h-12 rounded-xl ${f.bg} mb-4`}
+                >
+                  <f.icon className={`w-6 h-6 ${f.color}`} />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">You&apos;re logged in!</h3>
-                <p className="text-sm text-gray-600">
-                  {user?.google?.name || user?.email?.address || user?.discord?.username || 'User'}
+                <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Portal Cards ── */}
+      <section className="py-20 px-6 bg-white">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+              Các Cổng Dịch vụ
+            </h2>
+            <p className="text-gray-500 max-w-xl mx-auto">
+              Ba cổng giao diện chuyên biệt phục vụ Sinh viên, Bên xác minh và Quản trị viên.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Holder Portal */}
+            <Card className="group relative overflow-hidden rounded-2xl border border-gray-100 hover:shadow-xl transition-all hover:-translate-y-1">
+              <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-600" />
+              <div className="p-8 space-y-4">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50">
+                  <UserCheck className="w-7 h-7 text-blue-500" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Cổng Sinh Viên
+                </h3>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  Xem danh sách chứng chỉ đã được cấp, tùy chỉnh quyền ẩn/hiện
+                  thông tin, và chia sẻ bằng cấp cho nhà tuyển dụng.
                 </p>
-                {user?.wallet?.address && (
-                  <p className="text-xs text-gray-500 font-mono">
-                    {user.wallet.address.slice(0, 6)}...{user.wallet.address.slice(-4)}
-                  </p>
-                )}
-                <Button
-                  onClick={logout}
-                  variant="outline"
-                  className="mt-4"
-                >
-                  Logout
-                </Button>
+                <Link href="/holder">
+                  <Button
+                    variant="outline"
+                    className="w-full mt-2 group-hover:bg-blue-50 group-hover:border-blue-200 transition-colors"
+                  >
+                    Truy cập
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
               </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Privy Login Button */}
-                <Button
-                  onClick={handlePrivyLogin}
-                  className="w-full h-12 text-base font-semibold rounded-lg"
-                  style={{ backgroundColor: '#0d6efd' }}
-                >
-                  <Shield className="mr-2 h-5 w-5" />
-                  Login with Privy
-                </Button>
+            </Card>
 
-                {/* Info Box */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700">
-                  <h4 className="font-semibold mb-2">Login Options:</h4>
-                  <ul className="space-y-1 text-gray-600">
-                    <li>✉️ Email (passwordless)</li>
-                    <li>📱 SMS</li>
-                    <li>🔵 Google account</li>
-                    <li>💬 Discord account</li>
-                    <li>🦊 External wallet (MetaMask, etc.)</li>
-                  </ul>
-                  <p className="mt-3 text-xs text-gray-500">
-                    A secure embedded wallet will be created for you automatically.
-                  </p>
+            {/* Verifier Portal */}
+            <Card className="group relative overflow-hidden rounded-2xl border border-gray-100 hover:shadow-xl transition-all hover:-translate-y-1">
+              <div className="h-2 bg-gradient-to-r from-emerald-500 to-teal-500" />
+              <div className="p-8 space-y-4">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-50">
+                  <FileCheck className="w-7 h-7 text-emerald-500" />
                 </div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Xác thực Chứng chỉ
+                </h3>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  Tải lên file JSON chứng chỉ, xác minh tính hợp lệ qua pipeline
+                  10 bước — chữ ký, Merkle proof, on-chain anchor.
+                </p>
+                <Link href="/v3/verify">
+                  <Button
+                    variant="outline"
+                    className="w-full mt-2 group-hover:bg-emerald-50 group-hover:border-emerald-200 transition-colors"
+                  >
+                    Xác thực ngay
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
               </div>
-            )}
-          </Card>
-        )}
-      </div>
+            </Card>
+
+            {/* Admin Portal */}
+            <Card className="group relative overflow-hidden rounded-2xl border border-gray-100 hover:shadow-xl transition-all hover:-translate-y-1">
+              <div className="h-2 bg-gradient-to-r from-violet-500 to-purple-500" />
+              <div className="p-8 space-y-4">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-50">
+                  <Settings className="w-7 h-7 text-violet-500" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Quản trị Hệ thống
+                </h3>
+                <p className="text-sm text-gray-500 leading-relaxed">
+                  Quản lý Signer key, phát hành văn bằng hàng loạt (Bulk Issuance),
+                  thu hồi chứng chỉ, và giám sát trạng thái hệ thống.
+                </p>
+                <Link href="/admin/v3">
+                  <Button
+                    variant="outline"
+                    className="w-full mt-2 group-hover:bg-violet-50 group-hover:border-violet-200 transition-colors"
+                  >
+                    Truy cập
+                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats Banner ── */}
+      <section className="py-16 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { value: "~810", label: "Chứng chỉ ký / giây" },
+              { value: "5.5ms", label: "Độ trễ xác minh TB" },
+              { value: "~$9.45", label: "Chi phí / 10,000 bằng" },
+              { value: "133/133", label: "Tests Passed" },
+            ].map((s) => (
+              <div key={s.label}>
+                <div className="text-3xl md:text-4xl font-extrabold mb-1">
+                  {s.value}
+                </div>
+                <div className="text-sm text-blue-200">{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── About / Tech Stack ── */}
+      <section className="py-20 px-6">
+        <div className="container mx-auto max-w-3xl text-center space-y-6">
+          <Shield className="w-12 h-12 mx-auto text-blue-500" />
+          <h2 className="text-3xl font-bold text-gray-900">
+            Đồ án Tốt nghiệp — HCMUT
+          </h2>
+          <p className="text-gray-500 leading-relaxed">
+            BK Credential System (Phase 3) là đồ án tốt nghiệp tại Trường Đại học Bách Khoa
+            — ĐHQG TP.HCM, Khoa Khoa học và Kỹ thuật Máy tính. Hệ thống sử dụng kiến trúc
+            EIP-712 Off-Chain Signing kết hợp On-Chain Trust Anchor trên Ethereum Sepolia
+            Testnet, tích hợp Merkle Tree Batching, Selective Disclosure 256-bit, và Bitmap
+            Revocation để đạt được mức chi phí vận hành thấp nhất đồng thời bảo đảm an toàn
+            mật mã học theo chuẩn công nghiệp.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 pt-2">
+            {[
+              "Solidity 0.8.24",
+              "EIP-712",
+              "TypeScript SDK",
+              "Next.js 16",
+              "Ethereum Sepolia",
+              "OpenZeppelin",
+              "Prisma ORM",
+            ].map((t) => (
+              <span
+                key={t}
+                className="text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
