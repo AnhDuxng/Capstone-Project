@@ -243,6 +243,30 @@ export async function verifyCredential(
   }
 
   if (recoveredAddress.toLowerCase() !== cred.issuer.signer.toLowerCase()) {
+    // Attempt fallback to alternative chainId (e.g. Sepolia 11155111 vs Localhost 31337)
+    const altChainId = Number(opts.chainId) === 11155111 ? 31337 : 11155111;
+    try {
+      const altDomain = buildDomain(opts.verifyingContract, altChainId);
+      const altRecovered = recoverSignerAddress(
+        {
+          credId: cred.credId,
+          issuedAt: cred.issuedAt,
+          batchId: cred.batchId,
+          publicClaims: cred.publicClaims,
+          privateClaims: cred.privateClaims,
+          merkleRoot: cred.merkle.root,
+        },
+        cred.signature,
+        altDomain
+      );
+      if (altRecovered.toLowerCase() === cred.issuer.signer.toLowerCase()) {
+        recoveredAddress = altRecovered;
+        opts.chainId = altChainId;
+      }
+    } catch {}
+  }
+
+  if (recoveredAddress.toLowerCase() !== cred.issuer.signer.toLowerCase()) {
     return {
       isValid: false,
       error: {

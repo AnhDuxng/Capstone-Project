@@ -47,11 +47,15 @@ function VerifyContent() {
   const [credentialData, setCredentialData] = useState<CredentialFile | null>(null);
   const [showSteps, setShowSteps] = useState(true);
 
-  async function runPipeline(json: CredentialFile) {
+  async function runPipeline(json: CredentialFile, targetChainId?: number) {
     setCredentialData(json);
     try {
-      const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 31337;
-      const rpcUrl = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || "http://localhost:8545";
+      const defaultChainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 11155111;
+      const chainId = targetChainId || defaultChainId;
+      const rpcUrl =
+        chainId === 11155111
+          ? (process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com")
+          : (process.env.NEXT_PUBLIC_LOCAL_RPC_URL || "http://localhost:8545");
 
       const res = await verifyCredential(json, {
         verifyingContract: CREDENTIAL_REGISTRY_V3_ADDRESS,
@@ -88,7 +92,7 @@ function VerifyContent() {
       if (!res.ok || !data.ok) throw new Error(data?.message || "Failed to fetch credential file");
 
       toast.loading("Đang tiến hành xác thực 10 bước...", { id: "verify" });
-      await runPipeline(data.credentialFile);
+      await runPipeline(data.credentialFile, data.chainId);
     } catch (e) {
       const err = e as Error;
       toast.error(err.message || "Không tìm thấy chứng chỉ", { id: "verify" });

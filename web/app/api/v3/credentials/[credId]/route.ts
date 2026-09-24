@@ -18,6 +18,12 @@ export async function GET(
       select: {
         credentialJson: true,
         isRevoked: true,
+        batch: {
+          select: {
+            chainId: true,
+            txHash: true,
+          },
+        },
       },
     });
 
@@ -37,6 +43,8 @@ export async function GET(
     return NextResponse.json({
       ok: true,
       credentialFile: credFile,
+      chainId: credential.batch?.chainId,
+      txHash: credential.batch?.txHash,
     });
   } catch (error) {
     const err = error as Error;
