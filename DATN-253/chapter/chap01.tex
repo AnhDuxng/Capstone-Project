@@ -154,13 +154,15 @@ Total Cost (10k Batch) & $\sim$1.03B gas + \$50/month IPFS & $\sim$105,000 gas t
 \label{tab:phase-comparison}
 \end{table}
 
-\section{Report Organization}
+\section{Thesis Organization}
 
-The remainder of this report is structured as follows:
+The remainder of this thesis is structured as follows:
 \begin{itemize}
-    \item \textbf{Chapter 2 (Theoretical Foundations)}: Supplements core cryptographic concepts with EIP-712 typed hashing, salted-hash selective disclosure, on-chain bitmap revocation, and OpenZeppelin StandardMerkleTree.
-    \item \textbf{Chapter 3 (System Design)}: Outlines overall system architecture, credential type schemas, smart contract interfaces, SDK specifications, workflow pipelines, and database modeling.
-    \item \textbf{Chapter 4 (System Implementation)}: Documents the technical implementation of smart contracts, SDK modules, web portals, and API integration.
-    \item \textbf{Chapter 5 (Testing and Evaluation)}: Details smart contract coverage, gas measurements, SDK performance benchmarks, and static security audit findings.
-    \item \textbf{Chapter 6 (Conclusion and Future Work)}: Summarizes mid-term milestones, presents preliminary comparative metrics, and defines the roadmap for Weeks 5--7.
+    \item \textbf{Chapter 2 (Theoretical Foundations)}: Establishes the mathematical and cryptographic foundations of the proposed system, including ECDSA secp256k1 asymmetric cryptography, EIP-712 structured data hashing with domain separation, OpenZeppelin StandardMerkleTree double-hashing, 256-bit salted selective disclosure, and space-efficient on-chain bitmap revocation.
+    \item \textbf{Chapter 3 (System Architecture and Design)}: Details the multi-tier architectural framework, cryptographic schema definitions, smart contract interface designs, client-side SDK module specifications, issuance and verification dataflows, and Prisma relational database models.
+    \item \textbf{Chapter 4 (System Implementation)}: Documents the technical realization of the Solidity 0.8.24 smart contract suite, the 6-module TypeScript SDK, four interactive web application portals (Admin, Issuer, Holder, and Verifier), and the asynchronous bulk issuance engine with real-time Server-Sent Events (SSE) streaming.
+    \item \textbf{Chapter 5 (Empirical Evaluation and Security Analysis)}: Presents rigorous benchmark results across Scenarios A through E (scaling up to 10,000 credentials), real on-chain transaction metrics on the Ethereum Sepolia Testnet, static analysis audit findings with Slither, and formal STRIDE threat verification evaluated across 33 exploit simulations.
+    \item \textbf{Chapter 6 (Conclusion and Future Directions)}: Summarizes key achievements accomplished across the completed 15-week lifecycle in alignment with the milestone Gantt chart, reflects on five engineering challenges encountered and resolved during development, and outlines promising future extensions.
+    \item \textbf{Appendix}: Supplies the Ethereum Sepolia deployment manifest, public GitHub source code repository link, high-definition demonstration video reference, and a comprehensive glossary of technical abbreviations.
 \end{itemize}
+
