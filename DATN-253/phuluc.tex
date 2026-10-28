@@ -33,6 +33,126 @@ The smart contract suite and 10,000-credential batch anchor transaction deployed
     \item \textbf{Total Gas Consumed}: 167,804 gas (amortized 16.78 gas / credential)
 \end{itemize}
 
+
+\chapter{Project Execution Timeline and Engineering Schedule}
+\label{app:timeline}
+
+The research, engineering, and empirical evaluation of this Capstone Project were conducted over a structured \textbf{15-week development lifecycle}. To ensure methodical execution, rigorous verification, and clear traceability of deliverables, the project was organized into four sequential engineering stages:
+\begin{enumerate}
+    \item \textbf{Stage 1: Research, Requirements Formalization, and Architecture (Weeks 1--3)}: In-depth analysis of Phase 2 operational bottlenecks (specifically SD-JWT library complexity, non-standard secp256k1 curves, and recurring IPFS pinning fees), formalization of the system specification in \texttt{SPEC.md} (56~KB), database schema modeling via Prisma ORM v6, and generation of 10,000 synthetic graduation records for empirical stress testing.
+    \item \textbf{Stage 2: Smart Contracts, Cryptographic Engine, and Bulk Issuing (Weeks 4--7)}: Implementation of \texttt{IssuerRegistry.sol} and \texttt{CredentialRegistryV3.sol} featuring \texttt{Ownable2Step} and bitmap revocation; construction of the modular 6-package TypeScript SDK; achieving 100\% smart contract test coverage (52 test cases); and developing the chunked bulk issuance engine (\texttt{bulk.ts}, $20 \times 500 = 10,000$ credentials).
+    \item \textbf{Stage 3: Full-Stack Web Portals and Asynchronous Job Manager (Weeks 8--11)}: Engineering four specialized Next.js 14 web portals (Issuer, Holder, Verifier, Admin); integrating Privy passwordless email authentication for graduates; building the asynchronous \texttt{BulkJobManager} with Server-Sent Events (SSE) live progress streaming; and implementing the interactive 10-step visual verification pipeline.
+    \item \textbf{Stage 4: Empirical Benchmarks, Security Hardening, and Thesis Defense (Weeks 12--15)}: Executing the benchmark suite across Scenarios A through E (809 signatures/sec, 27.54s 10k bulk issuance, 5.502 ms verification latency, gas profiling); anchoring a live 10,000-credential batch on Ethereum Sepolia Testnet; conducting STRIDE threat analysis, Slither static audit, and passing 33/33 exploit simulations; and finalizing the graduation thesis manuscript, demonstration media, and presentation slide deck.
+\end{enumerate}
+
+\section{Summary of Completed Milestones Across 15 Weeks}
+
+Table~\ref{tab:15week-summary} summarizes the key deliverables, technical achievements, and verification outputs across all 15 weeks:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|>{\centering\arraybackslash}p{1.2cm}|>{\RaggedRight}p{4.2cm}|>{\centering\arraybackslash}p{1.8cm}|>{\RaggedRight}p{8.0cm}|}
+\hline
+\textbf{Week} & \textbf{Core Milestone} & \textbf{Status} & \textbf{Key Deliverables \& Verification Artifacts} \\
+\hline
+1 & Problem Analysis \& Architecture & \textbf{100\% Done} & Problem specification (\texttt{SPEC.md}), EIP-712 typing schema, Trust Anchor model. \\
+\hline
+2 & Database Modeling \& Monorepo & \textbf{100\% Done} & Neon PostgreSQL setup, Prisma Schema V3, 10k synthetic student fixture script. \\
+\hline
+3 & Cryptographic Design \& Schemas & \textbf{100\% Done} & Salted-hash commitment formulation, Merkle double-hashing, Domain Separator design. \\
+\hline
+4 & Smart Contract Suite & \textbf{100\% Done} & \texttt{IssuerRegistry.sol} and \texttt{CredentialRegistryV3.sol} with bitmap revocation. \\
+\hline
+5 & EIP-712 Core TypeScript SDK & \textbf{100\% Done} & 6 modular packages (\texttt{domain}, \texttt{signer}, \texttt{verifier}, \texttt{disclosure}, \texttt{merkle}, \texttt{index}). \\
+\hline
+6 & Smart Contract Testing \& Gas & \textbf{100\% Done} & 52 Hardhat unit tests (100\% statement/branch/line/func coverage), gas profile report. \\
+\hline
+7 & High-Throughput Bulk Engine & \textbf{100\% Done} & \texttt{bulk.ts} chunking engine ($20 \times 500 = 10,000$), Node.js heap memory optimization. \\
+\hline
+8 & Async Queue \& SSE Streaming & \textbf{100\% Done} & In-memory \texttt{BulkJobManager}, async HTTP 202 route, live SSE event streaming. \\
+\hline
+9 & Issuer Portal (Registrar Console) & \textbf{100\% Done} & CSV drag-and-drop ingestion, Zod parser, 4-stage SSE stepper, Web3 anchor trigger. \\
+\hline
+10 & Holder Portal (Student Wallet) & \textbf{100\% Done} & Privy email passwordless login, credential vault, Selective Disclosure interactive UI. \\
+\hline
+11 & Verifier Portal \& Admin Panel & \textbf{100\% Done} & 10-step visual stepper, deep-link lookups, live Sepolia RPC, signer key governance. \\
+\hline
+12 & Empirical Evaluation Scenarios A--E & \textbf{100\% Done} & Benchmark dataset: 809 sign/s, 27.54s 10k bulk, 5.5ms verify, $C=500$ load, gas evaluation. \\
+\hline
+13 & Ethereum Sepolia Testnet Anchor & \textbf{100\% Done} & Live 10,000 batch anchored in block 11,654,826 (tx \texttt{0x54b11343...}, 167,804 gas). \\
+\hline
+14 & Security Hardening \& Static Audit & \textbf{100\% Done} & STRIDE 6-dimensional matrix, Slither 10-category checklist, 33/33 exploit tests passed. \\
+\hline
+15 & Thesis Finalization \& Defense & \textbf{100\% Done} & Full LaTeX manuscript in \texttt{DATN-253}, demonstration media, slides, GitHub release. \\
+\hline
+\end{tabular}
+}
+\caption{Comprehensive 15-Week Project Execution Summary and Deliverables}
+\label{tab:15week-summary}
+\end{table}
+
+\section{Master Project Gantt Chart (15-Week Timeline)}
+
+Figure~\ref{fig:project-gantt} illustrates the complete 15-week master project timeline, showcasing the steady progression and successful completion of all four stages:
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{ganttchart}[
+    hgrid,
+    vgrid,
+    x unit=0.88cm,
+    y unit chart=0.62cm,
+    time slot format=simple,
+    title/.append style={fill=blue!10},
+    title label font=\small\bfseries,
+    bar/.append style={fill=teal!60, draw=teal!80!black},
+    bar complete/.append style={fill=teal!70, draw=teal!90!black},
+    progress label text=\relax,
+    group/.append style={fill=purple!20, draw=purple!80!black},
+    milestone/.append style={fill=red!70, draw=red!90!black}
+]{1}{15}
+\gantttitle{Complete 15-Week Master Project Engineering Timeline}{15} \\
+\gantttitlelist{1,...,15}{1} \\
+
+% Stage 1: Research & Specifications (Weeks 1-3)
+\ganttgroup[progress=100]{\textbf{Stage 1: Research, Requirements \& Schemas}}{1}{3} \\
+\ganttbar[progress=100]{W1: Problem Analysis \& SPEC.md}{1}{1} \\
+\ganttbar[progress=100]{W2: Database Modeling \& Monorepo}{2}{2} \\
+\ganttbar[progress=100]{W3: Cryptographic Design \& Schemas}{3}{3} \\
+\ganttmilestone{M1: Technical Foundations Formalized}{3} \\
+
+% Stage 2: Core Engineering (Weeks 4-7)
+\ganttgroup[progress=100]{\textbf{Stage 2: Smart Contracts \& Core SDK}}{4}{7} \\
+\ganttbar[progress=100]{W4: Smart Contract Implementation}{4}{4} \\
+\ganttbar[progress=100]{W5: EIP-712 Core TypeScript SDK}{5}{5} \\
+\ganttbar[progress=100]{W6: Unit Testing (100\% Coverage)}{6}{6} \\
+\ganttbar[progress=100]{W7: Bulk Issuance Engine (bulk.ts)}{7}{7} \\
+\ganttmilestone{M2: Core Cryptographic Engine Complete}{7} \\
+
+% Stage 3: Web Portals & Infrastructure (Weeks 8-11)
+\ganttgroup[progress=100]{\textbf{Stage 3: Full-Stack Web Application}}{8}{11} \\
+\ganttbar[progress=100]{W8: Async Worker \& SSE Streaming}{8}{8} \\
+\ganttbar[progress=100]{W9: Issuer Portal (Registrar Console)}{9}{9} \\
+\ganttbar[progress=100]{W10: Holder Portal (Student Wallet)}{10}{10} \\
+\ganttbar[progress=100]{W11: Verifier Portal \& Admin Panel}{11}{11} \\
+\ganttmilestone{M3: 4 Web Portals Operational}{11} \\
+
+% Stage 4: Evaluation, Hardening & Defense (Weeks 12-15)
+\ganttgroup[progress=100]{\textbf{Stage 4: Empirical Evaluation \& Defense}}{12}{15} \\
+\ganttbar[progress=100]{W12: Empirical Benchmarks (Scenarios A--E)}{12}{12} \\
+\ganttbar[progress=100]{W13: Ethereum Sepolia Live 10k Anchor}{13}{13} \\
+\ganttbar[progress=100]{W14: Security Hardening (33/33 Tests)}{14}{14} \\
+\ganttbar[progress=100]{W15: Thesis Manuscript \& Defense}{15}{15} \\
+\ganttmilestone{Final Defense Release v3.0}{15}
+\end{ganttchart}
+}
+\caption{Comprehensive 15-Week Master Project Schedule Demonstrating Milestone Completion}
+\label{fig:project-gantt}
+\end{figure}
+
 \chapter{List of Abbreviations and Acronyms}
 \label{app:acronyms}
 

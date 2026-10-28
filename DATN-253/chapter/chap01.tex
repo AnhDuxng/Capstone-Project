@@ -1,4 +1,4 @@
-% Chapter 1: Introduction & Overview — Mid-Term Report Phase 3
+% Chapter 1: Introduction & Overview — Capstone Project Report Phase 3
 
 \chapter{Introduction and Overview}
 
@@ -20,7 +20,7 @@ The \textbf{BK Credential System} is engineered as a three-tier hybrid architect
     \item \textbf{Trustless Verification}: Enabling any third party to cryptographically verify credentials directly against blockchain trust anchors without depending on proprietary university backend infrastructure.
 \end{itemize}
 
-In Phase 2 (HK252-DATN-131), we designed and implemented a functional prototype leveraging \textit{SD-JWT VC (Selective Disclosure JSON Web Token Verifiable Credential)} paired with an on-chain \textit{Merkle Tree} registry. However, rigorous evaluation at university scale ($\geq$10,000 graduates per cohort) revealed two significant operational bottlenecks:
+In Phase 2, we designed and implemented a functional prototype leveraging \textit{SD-JWT VC (Selective Disclosure JSON Web Token Verifiable Credential)} paired with an on-chain \textit{Merkle Tree} registry. However, rigorous evaluation at university scale ($\geq$10,000 graduates per cohort) revealed two significant operational bottlenecks:
 
 \begin{enumerate}
     \item \textbf{IPFS Operational Overhead}: Mandatory pinning of Public Canonical Views (PCV) per credential to IPFS incurred recurring storage fees (\$0.001--\$0.01/credential/month) and introduced an operational dependency on external IPFS gateways.
@@ -65,7 +65,7 @@ The technical scope of Phase 3 is structured across five systematic engineering 
     \item \textbf{Cryptographic and Protocol Layer}:
     \begin{itemize}
         \item Formal specification of the EIP-712 typed structured data schema, including domain separation parameters (\texttt{name}, \texttt{version}, \texttt{chainId}, \texttt{verifyingContract}) and nested data structures (\texttt{PublicClaims}, \texttt{BkCredential}).
-        \item Design of a 256-bit salted-hash commitment scheme for privacy-preserving Selective Disclosure, computing attribute commitments as $C_i = \text{keccak256}(\text{salt}_i \parallel \text{key}_i \parallel \text{value}_i)$ directly within the signed EIP-712 payload.
+        \item Design of a 256-bit salted-hash commitment scheme for privacy-preserving Selective Disclosure, computing attribute commitments as $C_i = \text{keccak256}(\text{abi.encode}(\text{salt}_i, \text{key}_i, \text{value}_i))$ directly within the signed EIP-712 payload.
         \item Integration of OpenZeppelin \texttt{StandardMerkleTree} with double keccak256 leaf hashing ($\text{leaf} = \text{keccak256}(\text{keccak256}(\text{abi.encode}(\dots)))$) to prevent second-preimage collision attacks.
     \end{itemize}
     
@@ -93,64 +93,95 @@ The technical scope of Phase 3 is structured across five systematic engineering 
     \end{itemize}
 \end{enumerate}
 
-This mid-term report captures our progress through the completion of \textbf{Week 4} (Specification, Smart Contracts, SDK, and Web Portals), representing 100\% of the scheduled mid-term milestones within the 7-week roadmap.
+This graduation thesis presents the architectural design, implementation, and empirical evaluation of the BK Credential System Phase 3.
 
-\section{Comparative Analysis with the Three-Tier Hybrid SD-JWT VC Architecture (Phase 2)}
+\section{Contributions of This Thesis}
 
-To substantiate the motivation for Phase 3, it is critical to contrast its foundational design decisions with the Phase 2 prototype (HK252-DATN-131). 
+To establish a clear boundary for our work, this section outlines the foundational components inherited from Phase 2 and presents the specific engineering contributions achieved in Phase 3.
 
-In Phase 2, the system adopted an on-chain asset and token-centric model where individual credentials were instantiated as ERC-721 Non-Fungible Tokens (NFTs). While this demonstrated basic blockchain immutability, it suffered from severe scalability bottlenecks:
+\subsection{Components Inherited from Phase 2}
+
+Phase 2 laid the groundwork for verifiable academic credentials at our university, providing key architectural foundations that Phase 3 builds upon:
 \begin{itemize}
-    \item \textbf{Linear Gas Cost Scaling}: Every issued certificate required an individual on-chain \texttt{mintCertificate()} transaction ($\sim$103,000 gas per certificate), escalating to over 1.03 billion gas for a standard university graduating cohort of 10,000 students.
-    \item \textbf{Mandatory IPFS Pinning Overhead}: Each credential mandated pinning a Public Canonical View (PCV) to IPFS, incurring continuous pinning subscription fees ($\sim$\$0.001--\$0.01/credential/month) and creating a fragile operational dependency on external gateway availability.
-    \item \textbf{Non-Standard Cryptographic Stacks}: Employing SD-JWT with ECDSA over secp256k1 (ES256K) lacked native support in standard OAuth/JWT libraries, necessitating a custom parser with heavy envelope formatting and complex \texttt{\_sd\_alg} metadata.
-    \item \textbf{Storage-Inefficient Revocation}: Tracking revocation via \texttt{mapping(bytes32 => bool)} consumed an entire 32-byte storage slot per revoked credential.
+    \item \textbf{Three-Tier Hybrid Architecture}: The overarching architectural model combining a relational database for application state, an on-chain blockchain registry for trust anchoring, and off-chain storage.
+    \item \textbf{On-Chain Merkle Batch Anchoring}: Phase 2 introduced batch issuance via Merkle trees, establishing an initial baseline of $\sim$24,638 gas per credential at a batch size of $N=100$~\cite{Grech2017BlockchainInEducation}.
+    \item \textbf{Concept of Selective Disclosure}: Phase 2 introduced holder-side attribute privacy using the SD-JWT (Selective Disclosure for JSON Web Tokens) format.
+    \item \textbf{Role-Based Smart Contracts}: Phase 2 deployed \texttt{IssuerRegistry} and \texttt{CredentialRegistry} contracts leveraging OpenZeppelin \texttt{AccessControl} to separate administrative and signing privileges.
+    \item \textbf{Walletless Holder Experience}: Phase 2 adopted passwordless magic-link email authentication, allowing students to access credentials without managing Web3 wallets or paying transaction fees.
 \end{itemize}
 
-Phase 3 resolves these bottlenecks by transitioning from a token-centric paradigm to a \textbf{pure attestation and Trust Anchor paradigm}. Under Phase 3:
+\subsection{Key Contributions of Phase 3}
+
+Building upon the Phase 2 baseline, our work in Phase 3 addresses identified scalability, operational, and architectural limitations through the following contributions:
+
+\begin{enumerate}
+    \item \textbf{Off-Chain EIP-712 Issuance Architecture}: Designed and implemented an off-chain issuance model based on EIP-712 typed structured data signatures, achieving zero gas consumption per individual credential while ensuring native compatibility with Web3 wallets and transparent signature inspection.
+    
+    \item \textbf{Salted-Hash Selective Disclosure Mechanism}: Formulated a lightweight selective disclosure mechanism computing per-attribute commitments as $C_i = \text{keccak256}(\text{abi.encode}(\text{salt}_i, \text{key}_i, \text{value}_i))$ directly within the EIP-712 data payload, eliminating the need for specialized JWT parsing libraries.
+    
+    \item \textbf{Space-Efficient On-Chain Bitmap Revocation}: Implemented a gas-optimized revocation mechanism in Solidity that packs 256 credential revocation flags into a single \texttt{uint256} storage slot, significantly reducing on-chain storage costs compared to traditional per-credential boolean mappings.
+    
+    \item \textbf{Chunked High-Throughput Issuance Pipeline}: Developed an asynchronous bulk issuance engine capable of processing university-scale cohorts ($10{,}000$ credentials divided into chunks of $500$) with real-time Server-Sent Events (SSE) streaming, preventing Node.js event-loop blocking and memory exhaustion.
+    
+    \item \textbf{Deterministic 10-Step Verification Workflow}: Formulated and implemented a standardized 10-step verification algorithm (combining 6 offline cryptographic checks, 3 on-chain registry validations, and 1 expiration check) packaged as an open-source, modular TypeScript SDK (\texttt{@bkcred/sdk}).
+    
+    \item \textbf{Comprehensive Benchmarking and Security Analysis}: Conducted systematic empirical benchmarks across five evaluation scenarios (Scenarios A--E) evaluating issuance throughput, verification latency, gas scaling, concurrent server load, and static smart contract vulnerability analysis with Slither.
+\end{enumerate}
+
+\section{Comparative Analysis with Phase 2 Architecture}
+
+To clarify the motivation for transitioning to Phase 3, this section contrasts our proposed design with the previous Phase 2 prototype.
+
+\textbf{Overview of Phase 2 Architecture}: The Phase 2 prototype adopted an SD-JWT VC (Selective Disclosure JSON Web Token Verifiable Credential) model integrated with an on-chain Merkle tree registry. It demonstrated batch anchoring to aggregate multiple credentials into a single Merkle root ($\sim$24,638 gas per credential for $N=100$), utilized two smart contracts with role-based access control, and provided passwordless email authentication for students without requiring individual Web3 wallets.
+
+While Phase 2 validated the concept of decentralized academic credentials, several operational challenges emerged when considering production university deployment:
 \begin{itemize}
-    \item \textbf{Zero-Gas Issuance}: Individual credentials exist purely off-chain as structured JSON documents cryptographically signed via native EIP-712 typed structured data.
-    \item \textbf{Amortized On-Chain Anchor}: Only a single \texttt{anchorBatch} transaction ($\sim$105,000 gas total) is executed per cohort, binding up to $2^{32}$ certificates to the blockchain for approximately 10.5 gas per graduate.
-    \item \textbf{Elimination of Mandatory IPFS}: Raw credential files are distributed directly to holders, eliminating per-credential IPFS pinning costs and gateway latency bottlenecks.
-    \item \textbf{Native Web3 Selective Disclosure}: Attribute commitments utilize EVM-native keccak256 salted hashes verified in a single computation without custom JWT dependencies.
-    \item \textbf{Bitmap Revocation}: Revocation bits are packed into 256-bit words, saving $\sim$64$\times$ in on-chain storage.
+    \item \textbf{Operational Dependency on IPFS}: Storing each credential's Public Canonical View (PCV) on IPFS incurred recurring third-party pinning fees and introduced potential verification failures whenever external IPFS gateways experienced latency or downtime.
+    \item \textbf{Ecosystem Interoperability Overhead}: Implementing SD-JWT over the secp256k1 curve (ES256K) required custom decoding logic and non-standard JWT formatting, increasing client-side bundle size and maintenance complexity.
+    \item \textbf{Revocation Storage Costs}: Recording revocations via individual mapping entries (\texttt{mapping(bytes32 => bool)}) allocated a new 32-byte storage slot for every revoked credential ($\sim$103,154 gas per revocation).
+    \item \textbf{Limited Evaluation at Scale}: Phase 2 was primarily evaluated on small batch samples ($N \le 100$), leaving system performance unverified under large graduating cohorts ($N = 10{,}000$) and concurrent verification loads.
 \end{itemize}
 
-Table~\ref{tab:phase-comparison} provides a comprehensive multi-dimensional comparison between Phase 2 and Phase 3.
+In Phase 3, we address these challenges by adopting an off-chain EIP-712 structured data model anchored to an optimized on-chain registry:
+\begin{itemize}
+    \item \textbf{Off-Chain Issuance}: Individual credentials exist as self-contained JSON documents signed off-chain via standard EIP-712 typed structured data, incurring zero gas cost for individual certificate issuance.
+    \item \textbf{Amortized Batch Anchoring}: Only the Merkle root representing the cohort is committed on-chain through a single \texttt{anchorBatch()} transaction ($\sim$167,804 gas on Sepolia), amortizing the cost to approximately 16.8 gas per credential for a cohort of $10{,}000$.
+    \item \textbf{Independent Verification}: Credential holders directly retain their signed JSON files, eliminating mandatory IPFS dependencies and recurring pinning fees for basic verification.
+    \item \textbf{EVM-Native Selective Disclosure}: Attribute masking is accomplished through salted Keccak-256 commitments directly within the typed struct, simplifying verification logic.
+    \item \textbf{Compact Bitmap Revocation}: Revocation flags are indexed into 256-bit words (\texttt{uint256[]}), achieving a 256$\times$ reduction in storage slot allocation.
+\end{itemize}
+
+Table~\ref{tab:phase-comparison} summarizes the conceptual and architectural evolution between Phase 2 and Phase 3 across foundational cryptographic, structural, and governance dimensions.
 
 \begin{table}[H]
 \centering
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{|p{3.8cm}|p{5.4cm}|p{5.4cm}|}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|>{\bfseries}p{3.8cm}|p{6.0cm}|p{6.0cm}|}
 \hline
-\textbf{Evaluation Metric} & \textbf{Phase 2 (SD-JWT VC + NFT)} & \textbf{Phase 3 (EIP-712 Trust Anchor)} \\
+Architectural Dimension & Phase 2 Baseline (SD-JWT VC + IPFS) & Phase 3 Architecture (EIP-712 Trust Anchor) \\
 \hline
-Credential Paradigm & Token-centric (ERC-721 NFT) & Pure cryptographic attestation \\
+Credential Paradigm & SD-JWT Verifiable Credential with on-chain Merkle registry & Pure EIP-712 cryptographic attestation \\
 \hline
-Signature Protocol & ES256K SD-JWT (Compact format) & EIP-712 Typed Structured Data \\
+Signature Standard & ES256K Compact JWS serialization & EIP-712 Typed Structured Data hashing \\
 \hline
-Issuance Gas Cost & $\sim$103,000 gas per credential & 0 gas (Off-chain typed signing) \\
+Selective Disclosure & Token-level \texttt{\_sd[]} digests with custom regex/parser & Native salted Keccak-256 commitments ($C_i = \text{keccak256}(\text{abi.encode}(\text{salt}_i, \text{key}_i, \text{value}_i))$) \\
 \hline
-Batch Anchor Overhead & $N$ individual on-chain transactions & 1 tx \texttt{anchorBatch()} ($\sim$105k gas total) \\
+Storage Architecture & Mandatory public IPFS pinning per credential & Self-contained JSON payload (zero external storage dependency) \\
 \hline
-Storage Architecture & Mandatory per-credential IPFS pin & Self-contained JSON (IPFS optional) \\
+State Anchoring Model & Multi-transaction per-batch contract anchoring & $\mathcal{O}(1)$ single Merkle root anchor transaction per cohort \\
 \hline
-Selective Disclosure & SD-JWT \texttt{\_sd[]} array + SHA-256 & Salted keccak256 commitment array \\
+Revocation Architecture & Individual storage slot mappings (\texttt{mapping(bytes32 => bool)}) & 256-bit binary bitmap words (\texttt{mapping(bytes32 => mapping(uint256 => uint256))}) \\
 \hline
-Revocation Storage & \texttt{mapping(bytes32 => bool)} (1 slot/cred) & \texttt{uint256[]} Bitmap (256 creds/slot) \\
+Verification Stack & Custom SD-JWT disclosure parsing + WebCrypto & Native EVM cryptography (standard \texttt{ethers.js} v6 only) \\
 \hline
-Verification Dependencies & Custom SD-JWT parser + JWT verify & Standard \texttt{ethers.js} v6 \\
+Access Control \& Governance & Monolithic role-based \texttt{AccessControl} & Decoupled two-step ownership (\texttt{Ownable2Step}) and independent \texttt{IssuerRegistry} \\
 \hline
-RPC Query Footprint & 3 \texttt{eth\_call} queries + IPFS fetch & 2 \texttt{eth\_call} queries (Batchable) \\
-\hline
-End-to-End Latency & $\sim$608 ms (Dominated by IPFS) & $\sim$204 ms ($\sim$3$\times$ performance gain) \\
-\hline
-Web3 Wallet Need & Mandatory for student (Receive NFT) & Not required for credential holders \\
-\hline
-Total Cost (10k Batch) & $\sim$1.03B gas + \$50/month IPFS & $\sim$105,000 gas total + \$0 IPFS \\
+Identity Onboarding & Magic-link email requiring external auth services & Zero-friction Privy email authentication for non-technical holders \\
 \hline
 \end{tabular}
-\caption{Comprehensive Architectural and Operational Comparison: Phase 2 vs. Phase 3}
+}
+\caption{Architectural Comparison: Phase 2 Baseline vs. Phase 3 Design Paradigms}
 \label{tab:phase-comparison}
 \end{table}
 
@@ -158,11 +189,12 @@ Total Cost (10k Batch) & $\sim$1.03B gas + \$50/month IPFS & $\sim$105,000 gas t
 
 The remainder of this thesis is structured as follows:
 \begin{itemize}
-    \item \textbf{Chapter 2 (Theoretical Foundations)}: Establishes the mathematical and cryptographic foundations of the proposed system, including ECDSA secp256k1 asymmetric cryptography, EIP-712 structured data hashing with domain separation, OpenZeppelin StandardMerkleTree double-hashing, 256-bit salted selective disclosure, and space-efficient on-chain bitmap revocation.
-    \item \textbf{Chapter 3 (System Architecture and Design)}: Details the multi-tier architectural framework, cryptographic schema definitions, smart contract interface designs, client-side SDK module specifications, issuance and verification dataflows, and Prisma relational database models.
-    \item \textbf{Chapter 4 (System Implementation)}: Documents the technical realization of the Solidity 0.8.24 smart contract suite, the 6-module TypeScript SDK, four interactive web application portals (Admin, Issuer, Holder, and Verifier), and the asynchronous bulk issuance engine with real-time Server-Sent Events (SSE) streaming.
-    \item \textbf{Chapter 5 (Empirical Evaluation and Security Analysis)}: Presents rigorous benchmark results across Scenarios A through E (scaling up to 10,000 credentials), real on-chain transaction metrics on the Ethereum Sepolia Testnet, static analysis audit findings with Slither, and formal STRIDE threat verification evaluated across 33 exploit simulations.
-    \item \textbf{Chapter 6 (Conclusion and Future Directions)}: Summarizes key achievements accomplished across the completed 15-week lifecycle in alignment with the milestone Gantt chart, reflects on five engineering challenges encountered and resolved during development, and outlines promising future extensions.
-    \item \textbf{Appendix}: Supplies the Ethereum Sepolia deployment manifest, public GitHub source code repository link, high-definition demonstration video reference, and a comprehensive glossary of technical abbreviations.
+    \item \textbf{Chapter 2 (Related Work and Theoretical Foundations)}: Surveys existing blockchain-based academic credential systems (BlockCerts, OpenCerts, EBSI) to establish a comparative baseline, followed by the theoretical and cryptographic foundations of our work, including Verifiable Credentials, EIP-712 structured data hashing, Merkle tree batching, salted selective disclosure, and space-efficient bitmap revocation.
+    \item \textbf{Chapter 3 (System Architecture and Design)}: Details the multi-tier architectural framework, cryptographic schema definitions, smart contract interface designs, client-side SDK specifications, issuance and verification dataflows, and relational database models.
+    \item \textbf{Chapter 4 (System Implementation)}: Documents the engineering realization of the Solidity 0.8.20 smart contract suite, the 6-module TypeScript SDK, four interactive web application portals (Admin, Issuer, Holder, and Verifier), and the chunked asynchronous bulk issuance engine.
+    \item \textbf{Chapter 5 (Testing and Empirical Evaluation)}: Presents empirical benchmark results across Scenarios A through E (scaling up to 10,000 credentials), on-chain transaction measurements on Ethereum Sepolia, static security analysis with Slither, and threat modeling evaluated against STRIDE security test cases.
+    \item \textbf{Chapter 6 (Project Evaluation, Limitations, and Future Directions)}: Summarizes completed milestones across the 15-week timeline, provides a systematic analysis of system limitations and engineering trade-offs (including signer revocation consistency, holder-binding presentation boundaries, and computational bottlenecks), and outlines future research extensions including W3C VC alignment, Layer~2 rollups, and zero-knowledge proofs.
+    \item \textbf{References}: Complete bibliography of cited literature and technical standards.
+    \item \textbf{Appendix}: Contains supplementary materials, including the Ethereum Sepolia deployment manifest, public source code repository references, and a glossary of technical terms.
 \end{itemize}
 

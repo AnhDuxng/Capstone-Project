@@ -4,11 +4,11 @@
 
 \section{Development Environment and Toolchain}
 
-\subsection{Hardhat and Solidity 0.8.24}
+\subsection{Hardhat and Solidity Environment}
 
-The smart contract layer is developed and tested using the Hardhat framework and Solidity version 0.8.24 (upgraded from 0.8.20 in Phase 2):
+The smart contract suite is authored using Solidity with specification \texttt{\textasciicircum 0.8.20} and compiled via the Hardhat development framework configured with Solidity compiler version \textbf{0.8.24} (with 200 optimizer runs):
 \begin{itemize}
-    \item \textbf{Solidity \textasciicircum 0.8.24}: Smart contract compiler featuring built-in checked arithmetic to prevent integer overflow/underflow vulnerabilities.
+    \item \textbf{Solidity \textasciicircum 0.8.20 (Compiled with 0.8.24)}: The contract source code specifies \texttt{pragma solidity \textasciicircum 0.8.20;} for compatibility across modern EVM toolchains, while the Hardhat build pipeline compiles with version 0.8.24, utilizing built-in checked arithmetic to protect against integer overflow/underflow vulnerabilities.
     \item \textbf{Hardhat}: Local test network runner, deployment automation, and Sepolia testnet bridge.
     \item \textbf{OpenZeppelin Contracts v5.x}: Secure implementations of \texttt{Ownable2Step} and \texttt{Pausable}.
     \item \textbf{@openzeppelin/merkle-tree}: Production-grade JavaScript/TypeScript library for Merkle tree generation and verification.
@@ -181,90 +181,7 @@ The user-facing platform is implemented as a modern full-stack web application b
 
 \begin{figure}[H]
 \centering
-\resizebox{0.98\textwidth}{!}{
-\begin{tikzpicture}[
-    user/.style={draw=blue!70!black, fill=blue!10, rounded corners=4pt, thick, align=center, font=\small\bfseries, inner sep=6pt, text width=3.2cm, minimum height=1.1cm},
-    portal/.style={draw=teal!80!black, fill=teal!5, rounded corners=4pt, thick, align=center, inner sep=6pt, text width=3.2cm, minimum height=3.5cm},
-    backend/.style={draw=purple!80!black, fill=purple!8, rounded corners=4pt, thick, align=center, font=\small, inner sep=7pt, text width=6.6cm, minimum height=1.4cm},
-    arrow/.style={-{Stealth[scale=1.0]}, thick, draw=black!75},
-    darrow/.style={{Stealth[scale=1.0]}-{Stealth[scale=1.0]}, thick, draw=purple!80!black, dashed}
-]
-
-% Users Row
-\node[user] (u1) at (0, 0) {University Registrar\\(Issuer)};
-\node[user] (u2) at (4.0, 0) {Student Graduate\\(Holder)};
-\node[user] (u3) at (8.0, 0) {Employer / Verifier\\(Third Party)};
-\node[user] (u4) at (12.0, 0) {System Auditor\\(Admin)};
-
-% Portals Row (Unified Cards)
-\node[portal] (p1) at (0, -2.9) {
-    \textbf{\normalsize Issuer Portal}\\[2pt]
-    \textcolor{teal!70!black}{\texttt{\footnotesize /admin/v3/batches}}\\[6pt]
-    \RaggedRight\scriptsize
-    $\bullet$ CSV Batch Ingestion\\
-    $\bullet$ Zod Schema Validation\\
-    $\bullet$ Real-Time SSE Stepper\\
-    $\bullet$ Web3 \texttt{anchorBatch()}
-};
-
-\node[portal] (p2) at (4.0, -2.9) {
-    \textbf{\normalsize Holder Portal}\\[2pt]
-    \textcolor{teal!70!black}{\texttt{\footnotesize /holder/portal}}\\[6pt]
-    \RaggedRight\scriptsize
-    $\bullet$ Privy Passwordless Login\\
-    $\bullet$ Degree Credentials Vault\\
-    $\bullet$ Selective Claim Toggles\\
-    $\bullet$ JSON Presentation Export
-};
-
-\node[portal] (p3) at (8.0, -2.9) {
-    \textbf{\normalsize Verifier Portal}\\[2pt]
-    \textcolor{teal!70!black}{\texttt{\footnotesize /v3/verify}}\\[6pt]
-    \RaggedRight\scriptsize
-    $\bullet$ Drag-and-drop JSON Input\\
-    $\bullet$ URL Deep-link Lookup\\
-    $\bullet$ 10-Step Interactive Stepper\\
-    $\bullet$ Live Sepolia Attestation
-};
-
-\node[portal] (p4) at (12.0, -2.9) {
-    \textbf{\normalsize Admin Panel}\\[2pt]
-    \textcolor{teal!70!black}{\texttt{\footnotesize /admin/v3/signers}}\\[6pt]
-    \RaggedRight\scriptsize
-    $\bullet$ Institutional Signers Key\\
-    $\bullet$ DID Label Management\\
-    $\bullet$ Bitmap Batch Revocation\\
-    $\bullet$ Emergency Pause Control
-};
-
-% Connectors Users -> Portals
-\draw[arrow] (u1) -- (p1);
-\draw[arrow] (u2) -- (p2);
-\draw[arrow] (u3) -- (p3);
-\draw[arrow] (u4) -- (p4);
-
-% Infrastructure Layer (Bottom)
-\node[backend] (contracts) at (2.0, -5.8) {
-    \textbf{Smart Contracts Trust Anchor (Ethereum Sepolia)}\\[3pt]
-    \texttt{\footnotesize IssuerRegistry.sol} \quad \& \quad \texttt{\footnotesize CredentialRegistryV3.sol}
-};
-
-\node[backend, fill=orange!8, draw=orange!80!black] (database) at (10.0, -5.8) {
-    \textbf{Persistent Database Layer (Neon Serverless)}\\[3pt]
-    Prisma ORM: \texttt{\footnotesize BatchV3}, \texttt{\footnotesize CredentialV3}, \texttt{\footnotesize DisclosureV3}
-};
-
-% Connections Portals -> Infrastructure
-\draw[arrow, draw=teal!80!black] (p1.south) -- (p1.south |- contracts.north);
-\draw[arrow, draw=teal!80!black] (p2.south) -- (p2.south |- contracts.north);
-\draw[arrow, draw=teal!80!black] (p3.south) -- (p3.south |- database.north);
-\draw[arrow, draw=teal!80!black] (p4.south) -- (p4.south |- database.north);
-
-% Connection between Contracts and Database
-\draw[darrow] (contracts) -- node[above, font=\scriptsize\bfseries] {State Synchronization} (database);
-
-\end{tikzpicture}
-}
+\includegraphics[width=0.98\textwidth]{Images/figure_4.1.png}
 \caption{Component Architecture and Operational Flows Across the 4 Web Portals}
 \label{fig:web-portals-arch}
 \end{figure}
@@ -311,68 +228,73 @@ To decouple long-running cryptographic computations from HTTP request timeouts, 
 \resizebox{0.98\textwidth}{!}{
 \begin{tikzpicture}[
     lifeline/.style={draw=black!40, dashed, thick},
-    entity/.style={draw=black!75, fill=blue!10, rounded corners=3pt, thick, align=center, font=\small\bfseries, inner sep=6pt, text width=2.5cm, minimum height=1.1cm},
+    entity/.style={draw=blue!75!black, fill=blue!10, rounded corners=4pt, thick, align=center, font=\small\bfseries, inner sep=6pt, text width=2.8cm, minimum height=1.2cm},
     msg/.style={-{Stealth[scale=0.9]}, thick, draw=black!85, font=\footnotesize},
     retmsg/.style={-{Stealth[scale=0.9]}, dashed, thick, draw=black!75, font=\footnotesize},
-    notebox/.style={draw=orange!80!black, fill=orange!8, rounded corners=3pt, font=\scriptsize, align=center, inner sep=5pt, text width=3.8cm}
+    notebox/.style={draw=orange!85!black, fill=orange!6, rounded corners=4pt, font=\scriptsize, align=center, inner sep=6pt, text width=4.8cm}
 ]
 
 % Lifelines Headers
 \node[entity] (client) at (0, 0) {Registrar\\(Browser UI)};
-\node[entity] (api) at (3.6, 0) {Next.js API\\Routes Handler};
-\node[entity] (worker) at (7.4, 0) {BulkJobManager\\(Chunk Worker)};
-\node[entity] (chain) at (11.2, 0) {Ethereum\\(Sepolia)};
-\node[entity] (db) at (14.6, 0) {PostgreSQL\\(Prisma ORM)};
+\node[entity] (api) at (3.8, 0) {Next.js API\\(Server Handler)};
+\node[entity] (worker) at (7.8, 0) {BulkJobManager\\(Chunk Worker)};
+\node[entity] (chain) at (11.8, 0) {Ethereum\\(Sepolia)};
+\node[entity] (db) at (15.6, 0) {PostgreSQL\\(Prisma ORM)};
 
 % Vertical dashed lines
-\draw[lifeline] (client.south) -- (0, -9.6);
-\draw[lifeline] (api.south) -- (3.6, -9.6);
-\draw[lifeline] (worker.south) -- (7.4, -9.6);
-\draw[lifeline] (chain.south) -- (11.2, -9.6);
-\draw[lifeline] (db.south) -- (14.6, -9.6);
+\draw[lifeline] (client.south) -- (0, -14.8);
+\draw[lifeline] (api.south) -- (3.8, -14.8);
+\draw[lifeline] (worker.south) -- (7.8, -14.8);
+\draw[lifeline] (chain.south) -- (11.8, -14.8);
+\draw[lifeline] (db.south) -- (15.6, -14.8);
 
-% Sequence Messages with DISTINCT y-coordinates
+% Sequence Messages with ample vertical spacing
 % Step 1: Upload CSV
-\draw[msg] (0, -1.0) -- node[above] {1. \texttt{POST /issue-batch/async}} (3.6, -1.0);
+\draw[msg] (0, -1.5) -- node[above=2pt, fill=white, inner sep=1.5pt] {1. \texttt{POST /issue-batch/async}} (3.8, -1.5);
 
-% Step 2: Enqueue
-\draw[msg] (3.6, -1.6) -- node[above] {Enqueue 10k Batch} (7.4, -1.6);
+% Step 2: Enqueue Batch
+\draw[msg] (3.8, -2.3) -- node[above=2pt, fill=white, inner sep=1.5pt] {Enqueue 10k Batch} (7.8, -2.3);
 
 % Step 3: Immediate 202 Accepted
-\draw[retmsg] (3.6, -2.2) -- node[above] {2. \texttt{202 Accepted} (\texttt{jobId})} (0, -2.2);
+\draw[retmsg] (3.8, -3.1) -- node[above=2pt, fill=white, inner sep=1.5pt] {2. \texttt{202 Accepted} (\texttt{jobId})} (0, -3.1);
 
 % Step 4: Connect SSE Stream
-\draw[msg] (0, -2.8) -- node[above] {3. Connect SSE: \texttt{/stream}} (3.6, -2.8);
+\draw[msg] (0, -3.9) -- node[above=2pt, fill=white, inner sep=1.5pt] {3. Connect SSE: \texttt{/stream}} (3.8, -3.9);
 
-% Step 5: Subscribes
-\draw[msg] (3.6, -3.4) -- node[above] {Subscribes to Job Events} (7.4, -3.4);
+% Step 5: Subscribes to events
+\draw[msg] (3.8, -4.7) -- node[above=2pt, fill=white, inner sep=1.5pt] {Subscribe to Job Events} (7.8, -4.7);
 
-% Worker Processing box
-\node[notebox] at (7.4, -4.3) {\textbf{Chunk Processing ($20 \times 500$)}\\Salt Disclosures $\rightarrow$ Sign EIP-712\\$\rightarrow$ StandardMerkleTree};
+% Worker Processing box (generous vertical room)
+\node[notebox] at (7.8, -6.1) {
+    \textbf{Chunk Processing ($20 \times 500$)}\\[2pt]
+    $\bullet$ Salt Generation \& Commitments\\[1pt]
+    $\bullet$ EIP-712 Structured Data Signing\\[1pt]
+    $\bullet$ OpenZeppelin Merkle Tree
+};
 
 % Step 6: Worker pushes chunk progress
-\draw[retmsg, draw=teal!80!black] (7.4, -5.2) -- node[above, font=\scriptsize\bfseries, text=teal!80!black] {Chunk $k/20$ Progress} (3.6, -5.2);
+\draw[retmsg, draw=teal!80!black] (7.8, -7.6) -- node[above=2pt, font=\scriptsize\bfseries, text=teal!80!black, fill=white, inner sep=1.5pt] {Chunk $k/20$ Progress Event} (3.8, -7.6);
 
 % Step 7: API pushes SSE event to Client
-\draw[retmsg, draw=teal!80!black] (3.6, -5.7) -- node[above, font=\scriptsize\bfseries, text=teal!80!black] {SSE: Live Counters, Throughput, Logs} (0, -5.7);
+\draw[retmsg, draw=teal!80!black] (3.8, -8.5) -- node[above=2pt, font=\scriptsize\bfseries, text=teal!80!black, fill=white, inner sep=1.5pt] {SSE: Live Counters, Throughput, Logs} (0, -8.5);
 
 % Step 8: Worker completed
-\draw[retmsg] (7.4, -6.3) -- node[above] {Job Done (\texttt{merkleRoot})} (3.6, -6.3);
+\draw[retmsg] (7.8, -9.4) -- node[above=2pt, fill=white, inner sep=1.5pt] {Job Done (\texttt{merkleRoot})} (3.8, -9.4);
 
 % Step 9: API notifies Client completed
-\draw[retmsg] (3.6, -6.8) -- node[above] {SSE: \texttt{status: "COMPLETED"}} (0, -6.8);
+\draw[retmsg] (3.8, -10.3) -- node[above=2pt, fill=white, inner sep=1.5pt] {SSE: \texttt{status: "COMPLETED"}} (0, -10.3);
 
 % Step 10: Client anchors on Sepolia
-\draw[msg, draw=purple!80!black] (0, -7.4) -- node[above, font=\scriptsize\bfseries, text=purple!80!black] {4. \texttt{anchorBatch(root, size)} (MetaMask)} (11.2, -7.4);
+\draw[msg, draw=purple!80!black] (0, -11.3) -- node[above=2pt, font=\scriptsize\bfseries, text=purple!80!black, fill=white, inner sep=1.5pt] {4. \texttt{anchorBatch(root, size)} (MetaMask)} (11.8, -11.3);
 
 % Step 11: Sepolia confirms
-\draw[retmsg, draw=purple!80!black] (11.2, -8.0) -- node[above, font=\scriptsize] {Tx Confirmed (\texttt{blockNumber, txHash})} (0, -8.0);
+\draw[retmsg, draw=purple!80!black] (11.8, -12.3) -- node[above=2pt, font=\scriptsize, fill=white, inner sep=1.5pt] {Tx Confirmed (\texttt{blockNumber, txHash})} (0, -12.3);
 
 % Step 12: Client calls anchor-confirm
-\draw[msg] (0, -8.6) -- node[above] {5. \texttt{POST /anchor-confirm}} (3.6, -8.6);
+\draw[msg] (0, -13.2) -- node[above=2pt, fill=white, inner sep=1.5pt] {5. \texttt{POST /anchor-confirm}} (3.8, -13.2);
 
 % Step 13: API commits to database
-\draw[msg] (3.6, -9.1) -- node[above] {Persist Batch \& Credentials} (14.6, -9.1);
+\draw[msg] (3.8, -14.1) -- node[above=2pt, fill=white, inner sep=1.5pt] {Persist Batch \& Credentials (Prisma)} (15.6, -14.1);
 
 \end{tikzpicture}
 }

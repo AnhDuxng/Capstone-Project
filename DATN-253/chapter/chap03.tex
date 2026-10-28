@@ -62,29 +62,9 @@ The Phase 3 architecture follows the classical \textbf{Trust Triangle} model (Is
 \label{fig:phase3-architecture}
 \end{figure}
 
-\subsection{Architectural Advancements over Phase 2}
+\subsection{Core Architectural Evolution}
 
-\begin{table}[H]
-\centering
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{|p{3.5cm}|p{5.2cm}|p{5.5cm}|}
-\hline
-\textbf{Component} & \textbf{Phase 2 (SD-JWT)} & \textbf{Phase 3 (EIP-712 Trust Anchor)} \\
-\hline
-Smart Contracts & Monolithic \texttt{CertificateRegistry} & Decoupled \texttt{IssuerRegistry} and \texttt{CredentialRegistryV3} \\
-\hline
-Signing Layer & Backend ES256K signer & Modular TypeScript EIP-712 SDK (\texttt{ethers.js} v6) \\
-\hline
-Storage Reliance & Mandatory IPFS pinning per credential & Local/JSON credential files (IPFS optional) \\
-\hline
-Asset Model & ERC-721 NFT per student & Pure cryptographic attestation (No token overhead) \\
-\hline
-Access Control & Role-based AccessControl & \texttt{Ownable2Step} + cross-contract \texttt{isSigner} validation \\
-\hline
-\end{tabular}
-\caption{Architectural Evolution: Phase 2 vs. Phase 3}
-\label{tab:arch-changes}
-\end{table}
+As illustrated in Figure~\ref{fig:phase3-architecture}, the Phase 3 architecture reorganizes the credential lifecycle into a decoupled, unidirectional dataflow. Rather than transmitting raw claims through heavy intermediary protocols, the system isolates high-throughput cryptographic operations off-chain within the TypeScript SDK, committing strictly a 32-byte cryptographic root to \texttt{CredentialRegistryV3}. Concurrently, authority governance is delegated to an independent \texttt{IssuerRegistry}, establishing a clean separation of concerns between cryptographic identity management and cohort state anchoring.
 
 \section{EIP-712 Credential Schema Design}
 
@@ -119,9 +99,9 @@ struct BkCredential {
 
 \begin{lstlisting}
 privateClaims = [
-    keccak256(salt_1 || "fullName"  || "Tran Le Cong Minh"),
-    keccak256(salt_2 || "studentId" || "1910347"),
-    keccak256(salt_3 || "dob"       || "2001-08-12")
+    keccak256(abi.encode(salt_1, "fullName",  "Ho Anh Dung")),
+    keccak256(abi.encode(salt_2, "studentId", "2052921")),
+    keccak256(abi.encode(salt_3, "dob",       "2002-05-15"))
 ]
 \end{lstlisting}
 
@@ -133,70 +113,78 @@ The canonical output file distributed to the holder is a structured JSON documen
 
 \subsection{IssuerRegistry.sol}
 
-\textbf{Responsibility}: Maintains the registry of authorized university signing keys permitted to issue credentials and anchor batches.
+\textbf{Responsibility}: Maintains the authoritative on-chain registry of designated university signing keys authorized to issue academic credentials and anchor batches.
 
 \textbf{Design Characteristics}:
 \begin{itemize}
-    \item Inherits OpenZeppelin \texttt{Ownable2Step}~\cite{OZContracts} for two-phase administrative ownership transfer.
-    \item Maps active signer states (\texttt{isSigner}) and optional decentralized identifiers (\texttt{did}).
-    \item Provides paginated read functions (\texttt{getSigners}, \texttt{getAllSigners}, \texttt{getSignerCount}) for external auditing and verifiers.
+    \item Inherits OpenZeppelin \texttt{Ownable2Step}~\cite{OZContracts} for secure, two-phase administrative ownership transfer by university governance.
+    \item Maintains active signer states (\texttt{isSigner}) and associated Decentralized Identifiers (\texttt{did}).
+    \item Exposes paginated view methods (\texttt{getSigners}, \texttt{getAllSigners}, \texttt{getSignerCount}) for external auditing and verifiers.
 \end{itemize}
 
 \textbf{Core Interface}:
 \begin{itemize}
     \item \texttt{addSigner(address signer, bytes didLabel)}: Registers an authorized signing address.
-    \item \texttt{revokeSigner(address signer)}: Revokes signing permissions. Previously anchored batches remain cryptographically valid.
-    \item \texttt{isSigner(address) $\rightarrow$ bool}: View helper invoked by \texttt{CredentialRegistryV3}.
+    \item \texttt{revokeSigner(address signer)}: Revokes active issuing privileges from a signing address.
+    \item \texttt{isSigner(address) $\rightarrow$ bool}: View helper queried by \texttt{CredentialRegistryV3} to authorize batch anchoring and by verifiers during verification.
 \end{itemize}
+
+\textbf{Signer Lifecycle and Revocation Consistency}:
+In the current prototype implementation, \texttt{IssuerRegistry} enforces a binary authorization flag (\texttt{isSigner}). This design embodies the \textbf{Emergency Kill-Switch Pattern}: if a signing private key is compromised, invoking \texttt{revokeSigner} sets \texttt{isSigner = false}, providing an instantaneous network-wide kill-switch that halts future batch anchoring on \texttt{CredentialRegistryV3} and causes Step~7 of the verification pipeline to reject credentials signed by the compromised key. For routine administrative turnover (e.g., an authorized dean completing their official tenure), decommissioned keys are retired operationally from the active issuance pipeline rather than revoked on-chain, avoiding false-negative rejections of historical diplomas. As formally analyzed in Section~\ref{sec:signer-lifecycle}, decoupling emergency kill-switches from routine personnel turnover will be achieved via on-chain \textbf{Timestamp Validity Windows} correlating the batch anchoring timestamp (\texttt{anchoredAt}) with signer assignment intervals.
 
 \subsection{CredentialRegistryV3.sol}
 
-\textbf{Responsibility}: Serves as the primary Trust Anchor on Ethereum, persisting batch Merkle roots and managing high-efficiency bitmap revocations.
+\textbf{Responsibility}: Serves as the primary decentralized Trust Anchor on Ethereum, persisting batch Merkle roots and managing space-efficient bitmap revocations.
 
 \textbf{Design Characteristics}:
 \begin{itemize}
-    \item Implements \texttt{Ownable2Step} and \texttt{Pausable} for emergency state-freezing during key compromise.
-    \item Holds an immutable reference to \texttt{IssuerRegistry} to enforce access control.
-    \item Uses storage-optimized bitmap revocation mapping: \texttt{mapping(bytes32 $\rightarrow$ mapping(uint256 $\rightarrow$ uint256))}.
+    \item Implements \texttt{Ownable2Step} and \texttt{Pausable} for emergency state-freezing during security incidents without disrupting read-only verification.
+    \item Holds an immutable reference to \texttt{IssuerRegistry} to enforce access control via the \texttt{onlySigner} modifier.
+    \item Implements storage-optimized 256-bit bitmap revocation: \texttt{mapping(bytes32 $\rightarrow$ mapping(uint256 $\rightarrow$ uint256))}.
 \end{itemize}
 
 \textbf{Core Interface}:
 \begin{itemize}
-    \item \texttt{anchorBatch(merkleRoot, size, ipfsCid)}: Commits a batch Merkle root to blockchain state ($\sim$105,000 gas).
-    \item \texttt{revoke(merkleRoot, index)}: Sets the revocation bit for a single credential ($\sim$56,000 gas).
-    \item \texttt{revokeBatch(merkleRoot, indices[])}: Batch revocation within the same storage word ($\sim$90,000 gas for 4 items).
-    \item \texttt{isRevoked(merkleRoot, index) $\rightarrow$ bool}: View function for status verification.
-    \item \texttt{getAnchor(merkleRoot)}: Fetches batch timestamp, issuer address, and cohort size.
+    \item \texttt{anchorBatch(merkleRoot, size, ipfsCid)}: Commits a batch Merkle root to blockchain state ($\sim$167,804 gas on Sepolia).
+    \item \texttt{revoke(merkleRoot, index)}: Sets the revocation bit for an individual credential within an anchored batch.
+    \item \texttt{revokeBatch(merkleRoot, indices[])}: Executes batch revocation across multiple credentials in a single transaction.
+    \item \texttt{isRevoked(merkleRoot, index) $\rightarrow$ bool}: View function for deterministic status verification.
+    \item \texttt{getAnchor(merkleRoot)}: Fetches batch anchoring timestamp, original issuer address, and cohort size.
 \end{itemize}
 
-\subsection{Gas Consumption Comparison}
+\textbf{Batch Governance and Revocation Access Control}:
+In the smart contract implementation, credential-level revocation is guarded by \texttt{onlySigner} and verifies \texttt{msg.sender == anchor.issuer}. This ensures that individual certificate status cannot be altered by arbitrary third parties. To prevent ``orphaned batches''—a scenario where the original issuing account is decommissioned or rotated, leaving no active signer to manage necessary revocations—the administrative design establishes that the contract owner (\texttt{owner()}, representing the university's central authority) retains supervisory governance to authorize emergency status updates, ensuring institutional continuity across academic generations.
+
+\subsection{Theoretical Computational and Storage Complexity}
+
+To formalize the architectural efficiency of our decentralized trust anchor and bitmap revocation mechanics prior to empirical benchmarking (Chapter~5), Table~\ref{tab:theoretical-complexity} evaluates the theoretical algorithmic time and space complexities governing Phase 2 versus Phase 3 across core operations for a cohort of $N$ credentials and $k$ individual revocations:
 
 \begin{table}[H]
 \centering
 \renewcommand{\arraystretch}{1.3}
-\begin{tabular}{|p{4.8cm}|p{3.4cm}|p{3.8cm}|p{2.6cm}|}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{|>{\bfseries}p{4.2cm}|p{5.0cm}|p{5.0cm}|p{3.2cm}|}
 \hline
-\textbf{Operational Task} & \textbf{Phase 2 (ERC-721)} & \textbf{Phase 3 (Trust Anchor)} & \textbf{Optimization} \\
+Operational Primitive & Phase 2 Baseline (Individual Mapping) & Phase 3 Architecture (Merkle + Bitmap) & Theoretical Advantage \\
 \hline
-Individual Credential Issuance & $\sim$103,156 gas & 0 gas (Off-chain typed sign) & 100\% (Zero gas) \\
+On-Chain Cohort State Storage & $\mathcal{O}(N)$ EVM storage slots & $\mathcal{O}(1)$ storage slot (32-byte Merkle root) & Asymptotically optimal space \\
 \hline
-Batch Root Anchoring ($N$ creds) & $N \times \sim$103,156 gas & $\sim$105,000 gas (1 tx total) & $\sim N\times$ reduction \\
+On-Chain Anchoring Transactions & $\mathcal{O}(\lceil N / B_{\text{chunk}} \rceil)$ transactions & $\mathcal{O}(1)$ single transaction & Constant transaction scaling \\
 \hline
-Single Revocation (Cold Slot) & $\sim$45,000 gas & $\sim$56,000 gas (Initial word) & Comparable \\
+Off-Chain Tree Construction & $\mathcal{O}(N \log N)$ hashing operations & $\mathcal{O}(N \log N)$ hashing operations & Comparable computational bound \\
 \hline
-Subsequent Revocation (Warm Slot) & $\sim$45,000 gas & $\sim$5,000 gas (Bitmap flip) & $\sim$9$\times$ reduction \\
+Revocation Storage Allocation & $\mathcal{O}(k)$ independent \texttt{bytes32} slots & $\mathcal{O}(\lceil k / 256 \rceil)$ packed 256-bit words & Up to $256\times$ slot compression \\
 \hline
-Batch Revocation (4 in same word) & $\sim$180,000 gas & $\sim$90,000 gas total & $\sim$50\% reduction \\
+Subsequent Intra-Word Revocation & Cold \texttt{SSTORE} ($\sim$20,000 gas per slot) & Warm \texttt{SSTORE} ($\sim$5,000 gas via bitwise OR) & $\sim$4$\times$ execution opcode efficiency \\
 \hline
-Status Verification (\texttt{eth\_call}) & 0 gas (View function) & 0 gas (View function) & Free (0 gas) \\
+Revocation Status Lookup & $\mathcal{O}(1)$ single \texttt{SLOAD} & $\mathcal{O}(1)$ single \texttt{SLOAD} + bitwise shift & Constant-time query \\
 \hline
-Amortized Cost per Credential ($N=10,000$) & $\sim$103,156 gas/cred & $\sim$10.5 gas/cred & \textbf{$\sim$9,800$\times$} \\
-\hline
-Total Cohort Gas ($N=10,000$) & $\sim$1,031,560,000 gas & $\sim$105,000 gas total & \textbf{$\sim$9,800$\times$} \\
+Client-Side Verification Complexity & $\mathcal{O}(\log N) + \mathcal{O}(D)$ (SD-JWT regex/parse) & $\mathcal{O}(\log N) + \mathcal{O}(D)$ (Keccak-256 native) & Eliminates token parsing overhead \\
 \hline
 \end{tabular}
-\caption{Comprehensive Smart Contract Gas Consumption Profile: Phase 2 vs. Phase 3}
-\label{tab:gas-comparison}
+}
+\caption{Theoretical Algorithmic and EVM Storage Complexity Comparison}
+\label{tab:theoretical-complexity}
 \end{table}
 
 \section{EIP-712 SDK Architecture}
@@ -231,7 +219,7 @@ Constructs standardized EIP-712 Domain Separators, enforces strict checksummed E
 \hline
 6 & Offline & Recover signer address via \texttt{verifyTypedData()} and assert against \texttt{issuer.signer} & \texttt{SIGNATURE\_MISMATCH} \\
 \hline
-7 & Online & Query \texttt{IssuerRegistry} on-chain via \texttt{isSigner(recoveredAddress)} & \texttt{SIGNER\_NOT\_REGISTERED} \\
+7 & Online & Query \texttt{IssuerRegistry} on-chain to verify signer authorization: \texttt{isSigner(recoveredAddress)} & \texttt{SIGNER\_NOT\_REGISTERED} \\
 \hline
 8 & Online & Query \texttt{CredentialRegistryV3} via \texttt{getAnchor(root)} ($\texttt{anchoredAt} > 0$) & \texttt{BATCH\_NOT\_ANCHORED} \\
 \hline
@@ -245,6 +233,9 @@ Constructs standardized EIP-712 Domain Separators, enforces strict checksummed E
 \end{table}
 
 Setting \texttt{skipOnlineChecks: true} enables offline mode, running Steps 1--6 and Step 10 without blockchain RPC requests.
+
+\paragraph{Signer Revocation Semantics and Temporal Consistency}:
+Step 7 validates the signing key against the on-chain \texttt{IssuerRegistry}. In the current prototype implementation, this step operates under the \textbf{Emergency Kill-Switch Pattern}: querying \texttt{isSigner(recoveredAddress)} returns a binary boolean flag. If a signing key has been revoked due to a private key compromise, Step 7 immediately halts verification with \texttt{SIGNER\_NOT\_REGISTERED} to protect relying parties from fraudulent issuances. To accommodate routine administrative turnover (where historical credentials must remain permanently valid after an official completes their tenure), Section~\ref{sec:signer-lifecycle} details the formal design of the \textbf{Timestamp Validity Window Pattern}, which correlates the batch anchoring timestamp (\texttt{anchoredAt}, Step 8) with on-chain signer validity intervals.
 
 \subsection{Selective Disclosure and Merkle Utilities (\texttt{disclosure.ts}, \texttt{merkle.ts})}
 \begin{itemize}
@@ -270,7 +261,12 @@ Setting \texttt{skipOnlineChecks: true} enables offline mode, running Steps 1--6
 Executed in three distinct stages: Offline structural verification (Steps 1--6), Online blockchain state attestation (Steps 7--9), and temporal expiration validation (Step 10).
 
 \subsection{Revocation Workflow}
-Admin triggers revocation on \texttt{CredentialRegistryV3}, updating the corresponding bit in the on-chain bitmap and synchronizing the status to the off-chain database.
+
+Revocation is structured across two distinct operational scopes:
+\begin{enumerate}
+    \item \textbf{Credential-Level Revocation}: When an individual degree is revoked (e.g., academic misconduct or administrative cancellation), the issuing authority executes \texttt{revoke(merkleRoot, index)} or \texttt{revokeBatch(merkleRoot, indices[])} on \texttt{CredentialRegistryV3}. The transaction flips the targeted bit in the 256-bit bitmap mapping (\texttt{\_revocationBitmap[merkleRoot][wordIndex] |= bitMask}), incurring a warm SSTORE cost of $\sim$5,000 gas. Subsequent verification queries at Step 9 instantly detect the revocation via \texttt{isRevoked()}.
+    \item \textbf{Signer-Level Authorization Revocation (Emergency Kill-Switch)}: When a signing key is suspected of private key leakage or compromise, university administration invokes \texttt{revokeSigner(signerAddress)} on \texttt{IssuerRegistry.sol}. Under the current prototype architecture, this acts as an immediate emergency kill-switch: it strips batch anchoring privileges on \texttt{CredentialRegistryV3} and causes Step~7 of the verification pipeline to reject credentials signed by the compromised key. For routine administrative turnover (e.g., an authorized dean completing their tenure), decommissioned keys are retired from the institution's active signing queue without invoking the on-chain kill-switch, preserving historical diploma validity until the smart contract is extended with timestamp validity windows (Section~\ref{sec:signer-lifecycle}).
+\end{enumerate}
 
 \section{Database Schema Modeling (Prisma ORM)}
 

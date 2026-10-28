@@ -1,0 +1,80 @@
+TRƯỜNG ĐẠI HỌC BÁCH KHOA – ĐHQG HCM
+KHOA KHOA HỌC VÀ KỸ THUẬT MÁY TÍNH
+—-------------------------------------------------------------
+
+HƯỚNG DẪN HOÀN THIỆN/ NỘP BÁO CÁO
+LUẬN VĂN TỐT NGHIỆP, ĐỒ ÁN TỐT NGHIỆP ĐẠI HỌC
+(Sau khi bảo vệ thành công)
+—----------------------------------------------------
+
+
+NỘI DUNG:
+
+Bản giấy:
+
+SV đóng quyển báo cáo Luận văn tốt nghiệp/ Đồ án tốt nghiệp (BC LVTN/ĐATN) theo THỨ TỰ nội dung sau:
+Bìa BC: Bìa cứng - màu xanh dương, chữ mạ vàng (xem ảnh mẫu trong link tài liệu).
+Trang tên BC (tờ lót): chất liệu giấy trắng bình thường, nội dung giống như bìa BC.
+Ở gáy BC: in nhan đề BC (có thể in tóm tắt nếu nhan đề quá dài), size 15 – 17 (xem ảnh mẫu trong link tài liệu).
+Phiếu nhiệm vụ, chấm điểm hướng dẫn &amp; phản biện (bản chính - đã ký): nhận từ GVHD &amp; GVPB sau khi bảo vệ (hoặc theo lịch hẹn - thông báo từ Khoa). THỨ TỰ như sau:
+Phiếu nhiệm vụ (NV).
+Phiếu chấm hướng dẫn (HD).
+Phiếu chấm phản biện (PB).
+Trước khi đóng quyển, SV cần chụp/ scan màu lại phiếu để nối file mềm nộp Khoa theo hướng dẫn trong mục 2.
+Lời cam đoan.
+Lời cảm ơn/ Lời ngỏ.
+Tóm tắt BC.
+Mục lục.
+Danh mục, bảng biểu, hình ảnh, ... (nếu có).
+Nội dung BC.
+Danh mục tài liệu (TL) tham khảo.
+Phụ lục (nếu có).
+
+Bản mềm (file):
+
+SV tích hợp/ nối TẤT CẢ các nội dung trên thành 01 file hoàn chỉnh, nội dung bao gồm đầy đủ/ đúng thứ tự nội dung như bản giấy, chuyển file sang dạng file PDF - không nén file, đặt tên file &quot;HK..._TT.MDT_LVTN_DATN_Finish_Mssv1_Mssv2&quot;. Sau đó upload lên link website cá nhân bất kỳ/ an toàn, cài đặt file ở chế độ public &gt;&gt; để Khoa tải file kiểm tra/ lưu trữ khi cần.
+
+SV có thể làm chung báo cáo theo MDT, nhưng mỗi SV phải tự nộp file báo cáo cho mình bằng email BK chính chủ vào link sau https://forms.gle/i5QJMXqdcnaubMoj7 , thời gian theo quy định tại từng Học kỳ cụ thể, SV theo dõi thông tin tại: https://elearning-cse.hcmut.edu.vn/ Nhà của tôi/ SV Khoa KH&amp;KTMT.
+
+SV chương trình Chất lượng cao làm BC phiên bản tiếng Anh, thì tự chuyển đổi ngôn ngữ sang tiếng Anh theo mẫu/ hướng dẫn của Khoa.
+
+QUY ĐỊNH CHUNG:
+
+Trình bày:
+
+Bảng mã: Unicode.
+Font: Time News Roman hoặc Arial.
+Size: 12 – 13.
+Canh lề: Trái: 3.0cm, Phải: 2.0cm, Trên: 2.0cm, Dưới: 2.0cm.
+Riêng nội dung báo cáo (BC), SV có thể in 2 mặt. Các nội dung khác như: phiếu nhiệm vụ, nhận xét/ chấm điểm hướng dẫn/ phản biện,… SV nên in 1 mặt.
+
+Số lượng nộp:
+
+File: từng SV theo yêu cầu tại mục (I.2).
+Giấy: Nhóm SV nộp trực tiếp cho Khoa MỘT BẢN GIẤY hoàn chỉnh. (Bản giấy hoàn chỉnh bắt buộc phải CÓ CHỮ KÝ XÁC NHẬN ĐÃ KIỂM TRA CỦA CBHD trên trang tên BC; và ký trên tất cả các phiếu nhiệm vụ, chấm hướng dẫn/ phản biện).
+(Nếu trang tên, phiếu NV/ chấm HD&amp;PB chưa được GV liên quan ký tên mà đã đến hạn phải nộp bản giấy cho Khoa, thì SV cần xin - in file có nội dung hoàn chỉnh nhận từ GV liên quan &gt;&gt; đóng quyển nộp về Khoa đúng hạn, Khoa sẽ hỗ trợ phân loại - trình ký cho SV. Nếu phiếu đã được ký tên đầy đủ, SV phải scan lại lấy file - nối file BC - nộp file về Khoa theo đúng hướng dẫn tại mục I.2).
+
+Thời gian – Địa điểm nộp:
+
+SV nộp theo timeline từng học kỳ cụ thể.
+
+* LƯU Ý:
+
+- SV nộp báo cáo:
+File: mỗi SV tự nộp cho mình.
+Giấy: nộp theo đơn vị đề tài/ nhóm SV (mỗi nhóm nộp 01 bản giấy).
+- SV có thể cử đại diện nhóm, hoặc nhờ bạn bè/ người thân đến Khoa nộp bản giấy hoàn chỉnh giúp.
+- Khoa sẽ cập nhật tình tình nộp file và bản giấy cho SV theo dõi tại link cố định tại từng thời điểm cụ thể. SV xem thông tin liên quan cập nhật tại kênh thông tin chính thức của Khoa:
+https://elearning-cse.hcmut.edu.vn/ Nhà của tôi/ SV Khoa KH&amp;KTMT/ ĐCLV-ĐACN-ĐAMHKTMT-LVTN-ĐATN
+- Khoa không công nhận những BC không đúng – đủ theo quy định như trên.
+- Có thể Khoa sẽ yêu cầu SV làm khảo sát trước khi tốt nghiệp.
+- SV không hoàn tất yêu cầu của Khoa, cũng như không hoàn tất việc nộp BC cho Khoa xem như không đạt điểm LVTN/ĐATN &gt;&gt; không được duyệt đăng ký tốt nghiệp.
+
+                                                                            TP.HCM, ngày 16 tháng 06 năm 2023                                                   
+
+TRƯỞNG KHOA
+
+
+
+
+

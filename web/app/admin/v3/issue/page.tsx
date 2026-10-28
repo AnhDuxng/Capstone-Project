@@ -21,8 +21,15 @@ import {
   ShieldAlert,
   Database,
   Link as LinkIcon,
+  Usb,
+  Lock,
+  ShieldCheck,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import RectorTokenModal, { RectorApproval } from "@/components/admin/RectorTokenModal";
+
+const RECTOR_CONFIGURED = !!process.env.NEXT_PUBLIC_RECTOR_ADDRESS;
+const APP_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 11155111);
 
 // Schema for row validation
 const CSVRowSchema = z.object({
@@ -60,6 +67,11 @@ export default function BatchIssuerPage() {
   const [ipfsCid, setIpfsCid] = useState("");
   const [size, setSize] = useState(0);
   const [txHash, setTxHash] = useState("");
+
+  // Rector USB Token approval (dual control)
+  const [requireRector, setRequireRector] = useState(RECTOR_CONFIGURED);
+  const [rectorModalOpen, setRectorModalOpen] = useState(false);
+  const [rectorApproval, setRectorApproval] = useState<RectorApproval | null>(null);
 
   // SSE progress streaming states (Week 5 Day 3)
   const [jobId, setJobId] = useState("");
@@ -297,6 +309,11 @@ export default function BatchIssuerPage() {
   const handleAnchorOnChain = async () => {
     if (!activeWallet) {
       toast.error("Không tìm thấy ví hoạt động");
+      return;
+    }
+    if (requireRector && !rectorApproval) {
+      toast.error("Cần phê duyệt bằng USB Token của Hiệu trưởng trước khi neo");
+      setRectorModalOpen(true);
       return;
     }
     setLoading(true);
@@ -766,17 +783,74 @@ export default function BatchIssuerPage() {
               )}
             </div>
 
+            {/* Rector USB Token approval gate */}
+            <div className="max-w-md mx-auto space-y-3">
+              <label className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                <span>Bắt buộc phê duyệt USB Token Hiệu trưởng</span>
+                <input
+                  id="toggle-require-rector"
+                  type="checkbox"
+                  checked={requireRector}
+                  disabled={!RECTOR_CONFIGURED || loading}
+                  onChange={(e) => setRequireRector(e.target.checked)}
+                  className="h-4 w-4 accent-amber-600"
+                />
+              </label>
+              {!RECTOR_CONFIGURED && (
+                <p className="text-[11px] text-muted-foreground">Chưa cấu hình NEXT_PUBLIC_RECTOR_ADDRESS trong .env.</p>
+              )}
+              {requireRector && (
+                rectorApproval ? (
+                  <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-left">
+                    <p className="flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                      <ShieldCheck className="h-4 w-4" /> Đã xác thực thẩm quyền Hiệu trưởng
+                    </p>
+                    <p className="text-[11px] font-mono text-muted-foreground mt-1 truncate">
+                      {rectorApproval.rectorAddress} · {new Date(rectorApproval.approvedAt * 1000).toLocaleTimeString()}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-left space-y-3">
+                    <p className="flex items-center gap-2 text-sm font-bold text-amber-700 dark:text-amber-400">
+                      <Lock className="h-4 w-4" /> Yêu cầu phê duyệt cấp cao
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Đợt phát hành cần chữ ký số từ USB Token của Hiệu trưởng trước khi neo Merkle Root lên Blockchain.
+                    </p>
+                    <Button
+                      id="open-rector-modal"
+                      onClick={() => setRectorModalOpen(true)}
+                      className="w-full bg-gradient-to-r from-amber-600 to-red-600 text-white font-bold gap-2"
+                    >
+                      <Usb className="h-4 w-4" /> Xác thực USB Token Hiệu trưởng
+                    </Button>
+                  </div>
+                )
+              )}
+            </div>
+
+            <RectorTokenModal
+              open={rectorModalOpen}
+              onClose={() => setRectorModalOpen(false)}
+              onApproved={(a) => { setRectorApproval(a); setRectorModalOpen(false); }}
+              batchId={batchId}
+              merkleRoot={merkleRoot}
+              size={size}
+              chainId={APP_CHAIN_ID}
+            />
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Button
-                onClick={() => setStep(1)}
+                onClick={() => { setRectorApproval(null); setStep(1); }}
                 variant="outline"
                 disabled={loading}
               >
                 Hủy đợt này
               </Button>
               <Button
+                id="anchor-batch-btn"
                 onClick={handleAnchorOnChain}
-                disabled={loading}
+                disabled={loading || (requireRector && !rectorApproval)}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold px-8 flex items-center justify-center gap-2"
               >
                 {loading && <Loader2 className="h-4 w-4 animate-spin" />}

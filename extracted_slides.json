@@ -1,0 +1,94 @@
+[
+  {
+    "slide": 1,
+    "text": "DESIGN AND IMPLEMENTATION OF A\nBLOCKCHAIN-BASED DIGITAL CERTIFICATE\nISSUANCE SOLUTION\nAdvisor: \nAssoc. Prof. Dr. Pham Hoang Anh\nSEMESTER 253\nCAPSTONE PROJECT\nVietnam National University, Ho Chi Minh City Ho Chi Minh\nCity University of Technology\nStudent:Ho Anh Dung"
+  },
+  {
+    "slide": 2,
+    "text": "TABLE OF CONTENTS\nIntroduction & Phase 2 → Phase 3 shift\nTheoretical foundations\nSystem design\nImplementation\nTesting & evaluation\n2\nChallenges & future work\n1\n2\n3\n4\n5\n6"
+  },
+  {
+    "slide": 3,
+    "text": "PROBLEM & MOTIVATION\nPaper diplomas and scanned PDFs are easy to forge.\nVerification is manual, slow and centralized (single point of\nfailure).\nOver-disclosure: showing a diploma exposes ID, date of birth and\nGPA.\nGoals: tamper-evidence, privacy-preserving selective disclosure,\ncost-efficient scale, trustless verification.\n1- Introduction\n3"
+  },
+  {
+    "slide": 4,
+    "text": "Per-credential minting on-chain: ~103,156 gas each, ≈ 1.03 billion gas per 10k\ncohort.\nMandatory IPFS pinning: recurring fee ($0.001–0.01/credential/month) and gateway\ndependency\nES256K SD-JWT needs a custom parser (_sd_alg, envelope overhead)\n4\nPHASE 2 RECAP: WHAT LIMITED US AT\nUNIVERSITY SCALE\nPer-credential revocation mapping: 1 storage slot per revoked credential.\nIn Phase 1+2 (HK251 - HK252), we designed and implemented a functional\nprototype leveraging SD-JWT VC (Selective Disclosure JSON Web Token Verifiable\nCredential) paired with an on-chain Merkle Tree registry. However, rigorous\nevaluation at university scale (≥10,000 graduates per cohort) revealed these\nsignificant operational bottlenecks:"
+  },
+  {
+    "slide": 5,
+    "text": "Objective Technical Approach\nEliminate mandatory IPFS dependencies Self-contained off-chain JSON + EIP-712 signature\nSimplify cryptographic, signing/verification Standard signTypedData / verifyTypedData (ethers v6)\nReduce on-chain gas overhead by ≥10× Off-chain signing + 1 anchorBatch per cohort\nStreamlined Selective Disclosure Salted keccak256 commitments inside the signed struct\n Gas-optimized Revocation Management On-chain bitmap (256 creds/word)\nHigh-throughput Processing (≥500 cred/sec) Modular TypeScript SDK + chunked bulk engine\nPHASE 3 OBJECTIVES\n5"
+  },
+  {
+    "slide": 6,
+    "text": "Design decision Phase 2 Phase 3 Reason\nCredential model NFT per student Signed JSON Remove per-credential on-chain cost\nSignature ES256K SD-JWT EIP-712 typed data Native Web3 standard, less custom code\nSelective disclosure _sd[] + SHA-256 Salted keccak256 commitments EVM-native, 1-line verification\nStorage Mandatory IPFS pin Local JSON (IPFS optional) No recurring fees or gateway\ndependency\nRevocation mapping(bytes32 =>\nbool) uint256 bitmap 256 credentials per slot\nContracts Monolithic IssuerRegistry &\n CredentialRegistryV3 Separation of duties\nParadigm: token-centric (ERC-721 per credential) → pure cryptographic attestation +\nTrust Anchor.\nBlockchain's role: the blockchain stores only the root of trust; credentials live off-chain.\n6\n DESIGN SHIFT: WHAT CHANGED AND WHY"
+  },
+  {
+    "slide": 7,
+    "text": "Dimension BlockCerts (MIT) OpenCerts\n(Singapore) EBSI (EU) BK Credential (Ours\nNetwork Model Public (Bitcoin/ETH) Public (Ethereum) Consortium (Private) Public (Ethereum / L2)\nAmortized Issuance O(1) batch (High fee) O(1) batch (Mainnet) Zero gas (Subsidized) O(1) (~16.8 gas / cred)\nSelective Disclosure None (Exposes all PII) Static schema masking Complex ZK / Predicates Native Salted Keccak-256\nRevocation Overhead UTXO / Off-chain list On-chain mapping (~45kStatus list contract On-Chain Bitmap (~5k ga\nHolder Experience Specialized wallet Portable file Specialized EBSI wallet Web3-free (Privy + File)\n7\nRELATED WORK"
+  },
+  {
+    "slide": 8,
+    "text": "Foundations: VC Model and the Move from SD-JWT to EIP-712\n7\n 2 – THEORETICAL FOUNDATIONS\nIssuer–Holder–Verifier trust triangle (W3C VC).\nSD-JWT: salted disclosures + _sd[] digests.\nLimitation noted in Phase 2: ES256K is not natively supported by standard JWT\nlibraries, so a custom parser was needed.\nEIP-712: typed structured data, domain separator (name, version, chainId,\nverifyingContract), and wallet and ethers v6 support."
+  },
+  {
+    "slide": 9,
+    "text": "8\nFOUR BUILDING BLOCKS"
+  },
+  {
+    "slide": 10,
+    "text": "3 - SYSTEM DESIGN\n9\nOverall Architecture\nOff-chain layer (zero gas): Issuer Portal → EIP-712 SDK (sign, create disclosure) → batch of N\nsigned credentials + StandardMerkleTree.\nOn-chain trust anchor (Sepolia): IssuerRegistry (who may sign) and CredentialRegistryV3\n(anchorBatch, isRevoked).\nApplication layer: Issuer, Holder, Verifier, Admin portals on Next.js 14 + Prisma + PostgreSQL.\nOnly one transaction per cohort: anchorBatch(root)."
+  },
+  {
+    "slide": 11,
+    "text": "CREDENTIAL SCHEMA (EIP-712)\n11\nBkCredential: credId, issuedAt, batchId, publicClaims (nested), privateClaims[] (bytes32\ncommitments), merkleRoot.\nPublicClaims: vct, degreeTitle, graduationDate, honors.\nPrivate claims (name, student ID, DOB, GPA) are stored only as salted commitments.\nHolder file = credential + Merkle proof + 65-byte signature + disclosure objects."
+  },
+  {
+    "slide": 12,
+    "text": "SMART CONTRACT DESIGN\n11\nIssuerRegistry (Ownable2Step): addSigner, revokeSigner, isSigner, DID labels, paginated\ngetters.\nCredentialRegistryV3 (Ownable2Step + Pausable): anchorBatch(root, size, ipfsCid), revoke,\nrevokeBatch, isRevoked, getAnchor.\nCross-contract check: onlySigner calls IssuerRegistry.isSigner(msg.sender).\nEmergency pause; two-step ownership transfer."
+  },
+  {
+    "slide": 13,
+    "text": "ISSUANCE AND REVOCATION WORKFLOWS\n12\nIssuance (8 steps): CSV upload → Zod validation → UUID → salts and commitments → EIP-712\nsigning → Merkle tree and proofs → anchorBatch → persist (PostgreSQL).\nRevocation: admin calls revoke or revokeBatch → bit set in bitmap → DB audit log\nsynchronized."
+  },
+  {
+    "slide": 14,
+    "text": "4 - IMPLEMENTATION\nContracts: Solidity, Hardhat, OpenZeppelin v5, solidity-coverage, hardhat-gas-reporter\nApp: Next.js 14 (App Router), TypeScript, Prisma v6, PostgreSQL on Neon, Privy passwordless login.\n@bkcred/sdk modules: domain, signer, verifier, disclosure, merkle, index.\n14\nDeployed on Ethereum Sepolia; addresses recorded in deployments-v3.json\nSmart ContractFullstack Application "
+  },
+  {
+    "slide": 15,
+    "text": "BACKEND ARCHITECTURE & ASYNCHRONOUS JOB MANAGER\n15"
+  },
+  {
+    "slide": 16,
+    "text": " FOUR WEB PORTALS\nIssuer: CSV ingest, live SSE stepper, anchorBatch trigger.\nHolder: Privy email login, credential vault, selective disclosure toggles, JSON\npresentation export.\nVerifier: drag-and-drop JSON or deep link, live 10-step stepper.\nAdmin: signer lifecycle, bitmap revocation, emergency pause.\nVideo demo:\n16"
+  },
+  {
+    "slide": 17,
+    "text": "97 automated tests, all passing: 52 contract tests (20 + 32) and 45 SDK tests.\n100% statements, branches, functions and lines on both contracts.\nSTRIDE threat matrix: 6 categories mapped to mitigations.\n33/33 exploit simulations rejected: Merkle tampering (8), signature forgery (7),\nselective-disclosure attacks (6), bitmap revocation attacks (6), replay and domain\ncollision (6).\n5 – TESTING AND EVALUATION\n17"
+  },
+  {
+    "slide": 18,
+    "text": "Scenario What it measures Key result Target / Takeaway\nA Signing throughput vs batch size (N =\n1k–50k)\nCrypto engine\nscalability\n707–809 creds/s, linear\nO(N); peak heap < 350\nMB at 50k\n≥ 500 creds/s ✔\nB End-to-end issuance (N = 10,000) Full off-chain\npipeline\n27.54 s total (signing 12.1\ns, Merkle 14.3 s) 10k graduates in < 30 s\nC Offline verification latency (1,000 runs) Single-verification\nspeed\nmean 5.50 ms, p99 8.96\nms Near-instant verification\nD Concurrent verification (C = 10–500) Behavior under load 163–187 req/s, 100%\nsuccess Stable under saturation\nE On-chain gas vs cohort (N = 100 / 1k /\n10k)\nBlockchain cost\nscaling\n98× / 980× / 9,785×\ncheaper; O(1) ≥ 10× reduction ✔\nEMPIRICAL EVALUATION: SCENARIOS A–E"
+  },
+  {
+    "slide": 19,
+    "text": "O(1) Constant-Time Scaling: Anchoring cost remains constant regardless of cohort size\nvia single Merkle root submission.\n1,430x Gas Reduction (N = 10,000): Slashes on-chain consumption from ~240M to\n167,804 gas (~16.8 gas / credential).\nLive Sepolia Testnet Validation: 10,000-cohort anchored in block 11,654,826 for only\n0.00019 ETH ($0.56) with 100% pass rate.\nON-CHAIN COST AND LIVE SEPOLIA VALIDATION\n19"
+  },
+  {
+    "slide": 20,
+    "text": "Limitation Solution Design Rationale\nSigner Kill-Switch Revoking a signer invalidates all\npast credentials they signed\nInstant emergency containment;\navoids EVM timestamp attacks\nOff-Chain Storage Lost JSON + lost DB =\nunrecoverable diploma\nOn-chain payload would leak privacy\nand cost ~1000x more gas\nNo Holder Binding Credential JSON is portable —\nanyone can present it\nZero-friction adoption; no Web3\nwallet required for graduates\nBinary Disclosure Reveal-or-hide only; no range\nproofs (e.g., GPA >= 3.0)\nZK proofs need MB-sized keys +\nseconds of client computation\nNo Usability Study No SUS scores or registrar\nonboarding metrics collected\nScope focused on technical\nvalidation (52 tests, 33 exploits)\n6 – EVALUATION, LIMITATION, FUTURE WORK\n20"
+  },
+  {
+    "slide": 21,
+    "text": "Deploy on Layer 2 (Arbitrum / Base / Optimism).\nZK range proofs (e.g., GPA ≥ 3.2 without revealing GPA).\nAlign with W3C VC Data Model v2.0 and DIDs (did:ethr, did:web).\nMobile holder wallet with secure enclave; NFC/QR offline presentation.\nCross-institution credential federation via multi-tenant IssuerRegistry.\nFUTURE DIRECTIONS\n21"
+  },
+  {
+    "slide": 22,
+    "text": "Designed and built BK Credential System Phase 3 on Ethereum Sepolia,\nreplacing SD-JWT + IPFS with EIP-712 signing and Merkle tree\nanchoring\nKey Result:\n1.Achieved O(1) on-chain scaling: ~16.8 gas/credential for 10,000-student\nbatches\n2.Offline verification in ~5.5 ms with 100% security test coverage (52 unit\ntests, 33 exploit simulations)\n3.Learned to balance cryptographic theory with practical engineering\ntrade-offs in building a real-world system\n CONCLUSION\n22"
+  },
+  {
+    "slide": 23,
+    "text": "T H A N K  Y O U\n"
+  }
+]

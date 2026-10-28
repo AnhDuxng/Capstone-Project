@@ -1,6 +1,139 @@
-% Chapter 2: Theoretical Foundations — Mid-Term Report Phase 3
+% Chapter 2: Related Work and Theoretical Foundations — Capstone Project Report Phase 3
 
-\chapter{Theoretical Foundations}
+\chapter{Related Work and Theoretical Foundations}
+
+This chapter establishes the academic and technological context of our work. We first review state-of-the-art blockchain-based credential systems—specifically BlockCerts, OpenCerts, and the European Blockchain Services Infrastructure (EBSI)—to analyze their architectural decisions, strengths, and limitations, positioning our proposed system within the existing landscape. Following this survey, we preserve and present the core theoretical foundations and cryptographic building blocks underpinning our work, including Verifiable Credentials, SD-JWT, Ethereum smart contracts, Merkle trees, EIP-712 typed structured data signing, salted-hash selective disclosure, and space-efficient on-chain bitmap revocation.
+
+\section{Related Work}
+
+\subsection{Landscape of Blockchain-Based Credential Verification}
+
+Academic credential fraud, unauthenticated digital documents, and centralized verification bottlenecks have motivated institutions and researchers worldwide to explore distributed ledgers as decentralized trust anchors~\cite{Grech2017BlockchainInEducation,Sharples2016Kudos,Chen2018BlockchainEducation,Ocheja2019LifelongLearning}. By anchoring cryptographic proofs onto an immutable public ledger, educational credentials can be verified autonomously by third parties without requiring continuous backend communication with the issuing university. 
+
+Over the past decade, three prominent architectures have emerged as international benchmarks in this domain: \textbf{BlockCerts}, \textbf{OpenCerts}, and the \textbf{European Blockchain Services Infrastructure (EBSI)}. Understanding their operational mechanisms and architectural trade-offs is essential to establishing the motivation for our work.
+
+\subsection{BlockCerts (MIT Media Lab / Learning Machine)}
+
+Initiated in 2016 by the MIT Media Lab and Learning Machine~\cite{Schmidt2015CertificatesReputation,Blockcerts2017,Grech2017BlockchainInEducation}, BlockCerts was among the earliest open standards for issuing and verifying blockchain-anchored educational certificates. 
+
+\textbf{Architecture and Operational Flow}:
+\begin{enumerate}
+    \item \textbf{Data Model}: BlockCerts formats certificates as JSON-LD documents compliant with the W3C Verifiable Credentials specification.
+    \item \textbf{Batch Anchoring}: To minimize transaction costs, certificates within an issuance batch are arranged as leaf nodes in a cryptographic Merkle tree.
+    \item \textbf{On-Chain Commitment}: The root hash of the Merkle tree is committed to the Bitcoin blockchain using an \texttt{OP\_RETURN} script (or alternately to Ethereum), which allows embedding up to 80 bytes of arbitrary data into a non-spendable transaction output.
+    \item \textbf{Verification}: A verifier inspects the candidate JSON-LD certificate, hashes its content, traverses the Merkle proof path to reconstruct the Merkle root, and compares it with the root recorded in the Bitcoin blockchain transaction.
+\end{enumerate}
+
+\textbf{Strengths}:
+\begin{itemize}
+    \item \textbf{Pioneering Open Standard}: BlockCerts established the precedent for open-source, vendor-neutral digital diploma verification.
+    \item \textbf{Bitcoin Immutability}: Anchoring on Bitcoin leverages the highest proof-of-work security and longest chain history.
+\end{itemize}
+
+\textbf{Limitations Identified}:
+\begin{itemize}
+    \item \textbf{High and Volatile Transaction Costs}: Bitcoin network transaction fees fluctuate significantly. During periods of network congestion, anchoring batches can become prohibitively expensive.
+    \item \textbf{Slow Confirmation Latency}: Bitcoin's 10-minute average block time impedes real-time interactive issuance workflows.
+    \item \textbf{Absence of Selective Disclosure}: BlockCerts requires the holder to share the complete JSON-LD document. Holders cannot hide sensitive personal attributes (such as national ID or grades) without invalidating the cryptographic hash and Merkle proof.
+    \item \textbf{Coarse Revocation Mechanics}: Revocation in BlockCerts is typically achieved by spending a designated revocation Bitcoin output address or maintaining an off-chain HTTP revocation list, which reintroduces centralized server availability risks.
+\end{itemize}
+
+\subsection{OpenCerts (GovTech Singapore)}
+
+Developed by the Government Technology Agency of Singapore (GovTech), OpenCerts~\cite{OpenCerts2019Whitepaper,GovTechSingapore2021OpenCerts} is a production-grade digital certificate ecosystem deployed across all public universities, polytechnics, and institutes of technical education in Singapore.
+
+\textbf{Architecture and Operational Flow}:
+\begin{enumerate}
+    \item \textbf{OpenAttestation Framework}: OpenCerts is built on top of OpenAttestation, an open-source framework for verifiable documents. Credentials are represented as wrapped JSON documents where each attribute is individually hashed into an obfuscation map.
+    \item \textbf{Smart Contract Trust Anchor (\texttt{DocumentStore})}: Each participating educational institution deploys its own \texttt{DocumentStore} smart contract on the Ethereum Mainnet. The contract maintains an on-chain mapping of issued document hashes or Merkle roots.
+    \item \textbf{Identity Binding via DNS-TXT}: OpenCerts binds the issuing contract address to the university's official domain name via DNS-TXT records (e.g., \texttt{openattestation net=ethereum netId=1 addr=0x...}). Verifiers resolve the domain's DNS records to ensure the contract belongs to an accredited institution.
+    \item \textbf{Web-Based Verification}: Verification is performed entirely client-side via a web portal where users drag-and-drop an \texttt{.opencert} file.
+\end{enumerate}
+
+\textbf{Strengths}:
+\begin{itemize}
+    \item \textbf{Proven Nationwide Adoption}: OpenCerts is actively used nationwide in Singapore, providing practical validation of blockchain credentials in public administration.
+    \item \textbf{DNS-Based Trust Resolution}: Utilizing established DNS infrastructure eliminates the requirement for proprietary centralized issuer registries.
+    \item \textbf{Zero Holder Web3 Friction}: Students receive a portable \texttt{.opencert} JSON file and do not require crypto wallets or gas tokens.
+\end{itemize}
+
+\textbf{Limitations Identified}:
+\begin{itemize}
+    \item \textbf{Heavy Deployment Overhead}: Requiring every educational institution to deploy and administer its own \texttt{DocumentStore} contract introduces considerable contract deployment and key management friction.
+    \item \textbf{Ethereum Mainnet Storage Cost}: Issuing and revoking documents on Ethereum Mainnet incurs high gas costs. In practice, revocation requires sending an on-chain transaction per document hash ($\sim$45,000 gas), which is expensive during network peaks.
+    \item \textbf{Limited Attribute-Level Selective Disclosure}: Although OpenAttestation supports attribute obfuscation, the holder cannot dynamically selectively disclose arbitrary attributes to different third parties on-the-fly without relying on external tooling or creating separate obfuscated presentations.
+    \item \textbf{DNS Infrastructure Dependency}: Verification integrity relies on the continuous availability and security of the institution's DNS server and domain registrar.
+\end{itemize}
+
+\subsection{European Blockchain Services Infrastructure (EBSI)}
+
+The European Blockchain Services Infrastructure (EBSI)~\cite{EBSI2023,EuropeanCommission2022ESSIF} is an initiative driven by the European Commission and the European Blockchain Partnership (EBP) across 27 EU member states, Norway, and Liechtenstein.
+
+\textbf{Architecture and Operational Flow}:
+\begin{enumerate}
+    \item \textbf{Permissioned Consortium Blockchain}: EBSI operates a private, permissioned network run by public administrations and accredited institutions, avoiding the volatile gas market of public permissionless networks.
+    \item \textbf{Standardized W3C VC and DID Architecture}: EBSI natively implements the W3C Verifiable Credentials standard paired with Decentralized Identifiers (\texttt{did:ebsi}). Issuer DID documents and public keys are maintained in the on-chain Trusted Issuers Registry (TIR).
+    \item \textbf{Accreditation and Schema Registries}: The framework includes a Trusted Schemas Registry (TSR) for standardized diplomas and professional qualifications, and a Trusted Accreditations Registry (TAR) for cross-border institutional recognition.
+    \item \textbf{Holder Conformance}: Students use EBSI-compliant mobile digital wallets to receive, store, and present verifiable credentials under European eIDAS and GDPR data protection regulations.
+\end{enumerate}
+
+\textbf{Strengths}:
+\begin{itemize}
+    \item \textbf{Strict Regulatory Compliance}: Specifically designed to satisfy European data sovereignty, privacy (GDPR), and cross-border legal standards.
+    \item \textbf{Predictable Operating Costs}: Operating on a consortium network eliminates end-user transaction fees and gas volatility.
+    \item \textbf{Native DID Interoperability}: Complete alignment with W3C DID specifications allows seamless cross-institution identity resolution.
+\end{itemize}
+
+\textbf{Limitations Identified}:
+\begin{itemize}
+    \item \textbf{High Infrastructure and Governance Overhead}: Setting up and maintaining permissioned consortium validator nodes requires substantial administrative coordination and computing infrastructure across participating states.
+    \item \textbf{Closed Governance}: Unlike public blockchains, independent third-party institutions outside the recognized consortium cannot independently issue or anchor credentials without formal bilateral accreditation.
+    \item \textbf{Complex Wallet Integration}: Holders must use specialized EBSI-compliant digital wallets, increasing onboarding complexity compared to standard web-based credential storage.
+\end{itemize}
+
+\subsection{Comparative Analysis and System Positioning}
+
+Table~\ref{tab:related-work-comparison} summarizes the multi-dimensional comparison between BlockCerts, OpenCerts, EBSI, and our proposed BK Credential System (Phase~3).
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3.2cm}|p{2.8cm}|p{2.8cm}|p{2.8cm}|p{3.2cm}|}
+\hline
+\textbf{Dimension} & \textbf{BlockCerts} & \textbf{OpenCerts} & \textbf{EBSI} & \textbf{BK Credential (Phase 3)} \\
+\hline
+Underlying Blockchain & Bitcoin / Ethereum & Ethereum Mainnet & Consortium EVM & Ethereum / Sepolia / L2 \\
+\hline
+Network Model & Public Permissionless & Public Permissionless & Permissioned Consortium & Public Permissionless \\
+\hline
+Batch Issuance Model & Merkle tree to \texttt{OP\_RETURN} & Merkle tree to \texttt{DocumentStore} & On-chain status registry & Merkle tree via \texttt{anchorBatch()} \\
+\hline
+Amortized Issuance Cost & $\mathcal{O}(1)$ tx per batch & $\mathcal{O}(1)$ tx per batch & Zero gas (Consortium) & $\mathcal{O}(1)$ tx ($\sim$16.8 gas/cred at $N$=10k) \\
+\hline
+Selective Disclosure & None (Full document) & Attribute masking via schema & W3C Predicates (Complex) & Native Salted Keccak-256 Commitments \\
+\hline
+Revocation Storage & Off-chain list or spent UTXO & On-chain mapping ($\sim$45k gas/cred) & On-chain status list contract & Space-efficient Bitmap ($\sim$5k gas, 256 creds/slot) \\
+\hline
+Standard Alignment & W3C VC JSON-LD & OpenAttestation JSON & W3C VC + DID (\texttt{did:ebsi}) & EIP-712 Typed Structured Data \\
+\hline
+Holder UX & Specialized mobile wallet & Portable JSON (file drop) & Specialized EBSI wallet & Portable JSON + Privy passwordless login \\
+\hline
+Verification Mode & Hybrid (Bitcoin RPC) & Client-side Web + DNS & Consortium Gateway & Deterministic 10-Step Pipeline (Offline/Online) \\
+\hline
+Deployment Maturity & Production (Selective) & Nationwide (Singapore) & Pilot (European Union) & Academic Prototype (University Scale) \\
+\hline
+\end{tabular}
+\caption{Comprehensive Comparison of Blockchain-Based Credential Systems}
+\label{tab:related-work-comparison}
+\end{table}
+
+\textbf{Positioning of Our Work}:
+From the comparative analysis, we observe that while existing systems have achieved commendable milestones, specific trade-offs remain unaddressed for institutional university deployments:
+\begin{itemize}
+    \item \textbf{Privacy vs. Complexity}: BlockCerts lacks attribute-level privacy entirely, while EBSI's zero-knowledge and predicate proofs require heavy cryptographic primitives. Phase~3 demonstrates that \textbf{salted Keccak-256 commitments directly embedded in an EIP-712 payload} provide a lightweight, mathematically sound middle ground.
+    \item \textbf{Economic Scalability}: OpenCerts requires dedicated per-institution contract deployments and per-document revocation mappings. Phase~3 achieves high efficiency by combining an amortized batch root commitment with an \textbf{on-chain 256-bit bitmap revocation scheme}, reducing state storage by a factor of 256.
+    \item \textbf{Practical Engineering Scope}: As an undergraduate capstone project, our system does not claim nationwide deployment like OpenCerts or cross-border treaty recognition like EBSI. Instead, our contribution lies in formulating, implementing, and empirically evaluating a gas-optimized, privacy-preserving, and modular architecture designed specifically for university cohort scales.
+\end{itemize}
 
 \section{Verifiable Credentials}
 
@@ -81,7 +214,7 @@ Sepolia is an established Ethereum test network utilizing a Proof-of-Stake conse
 
 \subsection{Merkle Tree Data Structure}
 
-A Merkle tree is a binary tree data structure where every leaf node represents the cryptographic hash of a data element, and every non-leaf node represents the cryptographic hash of its concatenated child nodes~\cite{Narayanan2016BitcoinBook}. The single hash at the top of the tree, denoted as the \textbf{Merkle Root}, serves as a compact, immutable cryptographic digest representing the entire set of elements. Any modification to a single leaf irrevocably alters the resulting Merkle Root.
+A Merkle tree is a binary tree data structure where every leaf node represents the cryptographic hash of a data element, and every non-leaf node represents the cryptographic hash of its concatenated child nodes~\cite{Merkle1988DigitalSignature,Narayanan2016BitcoinBook}. Modern cryptographic batching and accumulator schemes build extensively upon this foundation~\cite{Boneh2019BatchingAccumulators}. The single hash at the top of the tree, denoted as the \textbf{Merkle Root}, serves as a compact, immutable cryptographic digest representing the entire set of elements. Any modification to a single leaf irrevocably alters the resulting Merkle Root.
 
 \subsection{Merkle Proofs and Membership Verification}
 
@@ -174,7 +307,7 @@ signHash = keccak256("\x19\x01" || domainSeparator
 Phase 3 replaces SD-JWT disclosures with a lightweight \textbf{salted-hash commitment} scheme embedded directly in the EIP-712 payload:
 
 \begin{lstlisting}
-commitment = keccak256(abi.encodePacked(salt, key, value))
+commitment = keccak256(abi.encode(salt, key, value))
 \end{lstlisting}
 
 Where:
@@ -183,6 +316,9 @@ Where:
     \item \texttt{key}: UTF-8 string representing the attribute name (e.g., \texttt{"fullName"}, \texttt{"studentId"}, \texttt{"dob"}).
     \item \texttt{value}: UTF-8 string representing the attribute value.
 \end{itemize}
+
+\noindent\textbf{Cryptographic Design Rationale (\texttt{abi.encode} vs. \texttt{abi.encodePacked})}:\\
+Standard ABI encoding (\texttt{abi.encode}) is deliberately chosen over non-standard packed encoding (\texttt{abi.encodePacked}). When concatenating multiple dynamic types (such as consecutive \texttt{string} fields for \texttt{key} and \texttt{value}), packed encoding omits length prefixes, exposing the hashing scheme to well-known cryptographic hash collision vulnerabilities (e.g., \texttt{("first", "NameVanA")} colliding with \texttt{("firstName", "VanA")}). By contrast, standard \texttt{abi.encode} explicitly encodes each dynamic argument with an offset pointer, an explicit 32-byte length prefix, and 32-byte word boundary padding, guaranteeing collision resistance across all claim keys and values.
 
 The \texttt{privateClaims[]} array in \texttt{BkCredential} stores all 32-byte commitment hashes. When a holder chooses to reveal a claim, they provide the triple \texttt{\{salt, key, value\}} (termed a \textbf{disclosure}). The verifier recomputes the commitment hash and confirms its membership in \texttt{privateClaims[]}.
 
@@ -205,11 +341,11 @@ Disclosure Format & Base64url(JSON([salt, key, value])) & \texttt{\{salt, key, v
 \hline
 Commitment Location & \texttt{\_sd[]} array in JWT payload & \texttt{privateClaims[]} in EIP-712 struct \\
 \hline
-Required Library & Custom SD-JWT Parser & \texttt{ethers.solidityPackedKeccak256} \\
+Required Library & Custom SD-JWT Parser & Standard \texttt{ethers.AbiCoder} + \texttt{keccak256} \\
 \hline
 Envelope Overhead & \texttt{\_sd\_alg}, JWT headers, formatting & Zero additional envelope overhead \\
 \hline
-Verification Complexity & Multi-step JWT parse & 1 line of keccak256 computation \\
+Verification Complexity & Multi-step JWT parse & 1 step \texttt{keccak256(abi.encode)} assertion \\
 \hline
 \end{tabular}
 \caption{Selective Disclosure Comparison: SD-JWT vs. Salted-Hash}

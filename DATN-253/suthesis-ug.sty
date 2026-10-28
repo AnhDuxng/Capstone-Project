@@ -228,44 +228,54 @@ smaller print.
 
 \def\titlep{%
 \thispagestyle{empty}
+% Double border as in the faculty cover template
+\begin{tikzpicture}[remember picture,overlay]
+  \draw[line width=2.2pt] ([xshift=2.1cm,yshift=-1.1cm]current page.north west)
+    rectangle ([xshift=-1.1cm,yshift=1.1cm]current page.south east);
+  \draw[line width=0.6pt] ([xshift=2.25cm,yshift=-1.25cm]current page.north west)
+    rectangle ([xshift=-1.25cm,yshift=1.25cm]current page.south east);
+\end{tikzpicture}%
+\begin{singlespace}
 \begin{center}
-            VIETNAM NATIONAL UNIVERSITY HO CHI MINH CITY\\
-            HO CHI MINH CITY UNIVERSITY OF TECHNOLOGY\\
-            FACULTY OF COMPUTER SCIENCE AND ENGINEERING\\ 
-\end{center}
-\begin{center}
-        \vspace{5mm}
-        \begin{tabular}{c}
-            \large{- GRADUATION THESIS -}
-            \\
-            \hline
-            \\
-            \textbf{{\LARGE{Design and Implementation of a Digital}}}\\
-            \\
-            \textbf{{\LARGE{Credential Issuance Solution}}}\\
-            \\
-            \textbf{{\LARGE{Using Blockchain Technology}}}\\
-            \\
-            \hline
-        \end{tabular}
-        \vspace{5mm}
-\end{center}
-\begin{figure}[h!]
-\begin{center}
-    \includegraphics[width=6cm]{Images/BK.png}
-\end{center}
-\end{figure}
-\begin{center}
-        \begin{tabular}{ll}
-            Advisor: & \rm \@principaladvisor\\
-            Student: & \rm \@author\\
-        \end{tabular}
-\end{center}
-\begin{center}
-HO CHI MINH CITY, {\rm  08/2026}
-\end{center}
+{\fontsize{15}{18}\selectfont\bfseries
+VIETNAM NATIONAL UNIVERSITY HO CHI MINH CITY\\
+HO CHI MINH CITY UNIVERSITY OF TECHNOLOGY\\
+FACULTY OF COMPUTER SCIENCE AND ENGINEERING}
 
-\vskip.5in
+\vspace{8mm}
+\includegraphics[width=3.5cm]{Images/BK.png}
+
+\vspace{10mm}
+{\fontsize{15}{18}\selectfont\bfseries
+REPORT\\
+CAPSTONE PROJECT\par}
+
+\vspace{22mm}
+{\fontsize{18}{26}\selectfont\bfseries
+DESIGN AND IMPLEMENTATION OF A\\
+DIGITAL CREDENTIAL ISSUANCE SOLUTION\\
+USING BLOCKCHAIN TECHNOLOGY\par}
+
+\vspace{10mm}
+{\fontsize{15}{18}\selectfont
+Major: Computer Science\par}
+
+\vspace{2cm}
+\begin{flushleft}
+\hspace{2.0cm}\begin{tabular}{@{}l@{\hspace{1.5mm}}c@{\hspace{3mm}}l@{}}
+{\fontsize{15}{18}\selectfont\bfseries THESIS COMMITTEE} & {\fontsize{15}{18}\selectfont\bfseries :} & {\fontsize{15}{18}\selectfont\bfseries Committee 1CC -- Computer Engineering} \\
+{\fontsize{15}{18}\selectfont\bfseries SUPERVISOR(S)} & {\fontsize{15}{18}\selectfont\bfseries :} & {\fontsize{15}{18}\selectfont\bfseries \@principaladvisor} \\
+{\fontsize{15}{18}\selectfont\bfseries REVIEWER} & {\fontsize{15}{18}\selectfont\bfseries :} & {\fontsize{15}{18}\selectfont\bfseries Dr. Phan Tran Minh Khue} \\
+\multicolumn{3}{c}{\fontsize{15}{18}\selectfont\bfseries ---o0o---} \\
+{\fontsize{15}{18}\selectfont\bfseries STUDENT 1} & {\fontsize{15}{18}\selectfont\bfseries :} & {\fontsize{15}{18}\selectfont\bfseries \@author} \\
+\end{tabular}
+\end{flushleft}
+
+\vfill
+{\fontsize{15}{18}\selectfont HO CHI MINH CITY, 08/2026\par}
+\vspace{5mm}
+\end{center}
+\end{singlespace}
 \newpage}
 
 \newlength{\signaturespace}

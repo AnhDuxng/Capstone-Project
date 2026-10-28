@@ -3,12 +3,16 @@
 % See http://library.stanford.edu/research/bibliography-management/latex-and-bibtex
 % 
 
-\documentclass[12pt]{report}
-% \documentclass[12pt,twoside]{report} # 2-side printing
+\documentclass[a4paper,12pt]{report}
+% \documentclass[a4paper,12pt,twoside]{report} # 2-side printing
 \usepackage[utf8]{inputenc}
 % \usepackage[utf8]{vietnam}
 % \usepackage[english]{babel}
 \usepackage{suthesis-ug}
+% Faculty guideline: Times New Roman (Times-compatible), size 12,
+% margins Left 3.0cm, Right 2.0cm, Top 2.0cm, Bottom 2.0cm (A4)
+\usepackage{tgtermes}
+\usepackage[a4paper,left=3cm,right=2cm,top=2cm,bottom=2cm,includeheadfoot,headheight=15pt]{geometry}
 \usepackage{algorithm2e}
 \usepackage{amsmath}
 \usepackage{booktabs}
@@ -57,7 +61,7 @@
 \begin{document}
 \setstretch{1.25}
 
-\author{Tran Le Cong Minh - 1910347\\ & \rm Ho Anh Dung - 2052921\\}
+\author{Ho Anh Dung - 2052921}
 \dept{Computer Science and Engineering}
 \council{Capstone Project}
 \principaladvisor{Assoc. Prof. Dr. Pham Hoang Anh}
@@ -69,26 +73,26 @@
 \beforepreface
 \prefacesection{Statement of Authorship}
 
-We hereby declare that the work presented in this report is our own original research conducted under the supervision of Assoc. Prof. Dr. Pham Hoang Anh at the Faculty of Computer Science and Engineering, Ho Chi Minh City University of Technology -- VNU-HCM (HCMUT). It does not contain any material previously published or written by another person, except where due reference is made in the text.
+I hereby declare that the work presented in this report is my own original research conducted under the supervision of Assoc. Prof. Dr. Pham Hoang Anh at the Faculty of Computer Science and Engineering, Ho Chi Minh City University of Technology -- VNU-HCM (HCMUT). It does not contain any material previously published or written by another person, except where due reference is made in the text.
 
 All sources of assistance and external literature utilized during this research have been acknowledged and properly cited.
 
-We take full responsibility for the integrity of this work and any disciplinary actions pursuant to university regulations regarding academic honesty.
+I take full responsibility for the integrity of this work and any disciplinary actions pursuant to university regulations regarding academic honesty.
 
 \begin{flushright}
 \begin{tabular}{c}
     Ho Chi Minh City, August 2026\\
-    Authors\\
-    Tran Le Cong Minh \hspace*{1cm} Ho Anh Dung
+    Author\\
+    Ho Anh Dung
 \end{tabular}
 \end{flushright}
 
 \prefacesection{Acknowledgments}
-We would like to express our deepest gratitude to our advisor, Assoc. Prof. Dr. Pham Hoang Anh, for his guidance, insightful feedback, and continuous support throughout the duration of this project. His mentorship has played a pivotal role in shaping our scientific methodology and research mindset, which will serve as a strong foundation for our future academic pursuits.
+I would like to express my deepest gratitude to my advisor, Assoc. Prof. Dr. Pham Hoang Anh, for his guidance, insightful feedback, and continuous support throughout the duration of this project. His mentorship has played a pivotal role in shaping my scientific methodology and research mindset, which will serve as a strong foundation for my future academic pursuits.
 
-We also extend our sincere thanks to the faculty members of the Department of Computer Science and Engineering at Ho Chi Minh City University of Technology for providing us with the knowledge and technical foundation necessary to complete this project.
+I also extend my sincere thanks to the faculty members of the Department of Computer Science and Engineering at Ho Chi Minh City University of Technology for providing me with the knowledge and technical foundation necessary to complete this project.
 
-Finally, we express our heartfelt appreciation to our families and peers for their constant encouragement and assistance during our studies.
+Finally, I express my heartfelt appreciation to my family and peers for their constant encouragement and assistance during my studies.
 
 \prefacesection{Abstract}
 
@@ -96,30 +100,36 @@ Academic credential verification remains a critical yet vulnerable process in mo
 
 To resolve these fundamental limitations, this thesis presents the design, formalization, and implementation of the \textbf{BK Credential System} --- a high-performance, privacy-preserving, and cost-effective digital credential infrastructure built on the Ethereum Blockchain. The system establishes a novel \textbf{EIP-712 Off-Chain Signing + On-Chain Trust Anchor} architecture integrated with \textbf{Cryptographic Merkle Tree Batching}, \textbf{256-bit Salted-Hash Selective Disclosure}, and \textbf{On-Chain Bitmap Revocation}.
 
-Under this architecture, credential issuance is executed off-chain via typed structured data hashing according to the EIP-712 standard, eliminating gas costs for individual certificate generation. University authorities anchor an entire graduating cohort onto the blockchain through a single Merkle root transaction, linking thousands of certificates to immutable smart contract registries. The framework incorporates a lightweight salted-hash commitment scheme that empowers credential holders to selectively disclose specific claims (e.g., degree completion) while withholding private PII without compromising digital signature integrity or requiring specialized zero-knowledge infrastructure. Furthermore, on-chain revocation is modeled via a compact 256-bit bitmap mapping, reducing state storage overhead by $\sim$64$\times$ compared to per-credential storage slots.
+Under this architecture, credential issuance is executed off-chain via typed structured data hashing according to the EIP-712 standard, eliminating gas costs for individual certificate generation. University authorities anchor an entire graduating cohort onto the blockchain through a single Merkle root transaction, linking thousands of certificates to immutable smart contract registries. The framework incorporates a lightweight salted-hash commitment scheme that empowers credential holders to selectively disclose specific claims (e.g., degree completion) while withholding private PII without compromising digital signature integrity or requiring specialized zero-knowledge infrastructure. Furthermore, on-chain revocation is modeled via a compact 256-bit bitmap mapping, reducing state storage overhead by $256\times$ compared to per-credential storage slots.
 
-The complete software ecosystem comprises: (1) production-ready Solidity smart contracts (\texttt{IssuerRegistry} and \texttt{CredentialRegistryV3}) implementing two-step access control and emergency pause controls; (2) a modular TypeScript SDK encapsulating a canonical 10-Step Verification Pipeline; and (3) four responsive web portals tailored for university registrars, students, third-party verifiers, and system administrators.
+The complete software ecosystem comprises: (1) rigorously tested and verified Solidity smart contracts (\texttt{IssuerRegistry} and \texttt{CredentialRegistryV3}) implementing two-step access control and emergency pause controls; (2) a modular TypeScript SDK encapsulating a canonical 10-Step Verification Pipeline; and (3) four responsive web portals tailored for university registrars, students, third-party verifiers, and system administrators.
 
-Empirical evaluation and stress testing demonstrate that the proposed system achieves a signing throughput of $\sim$\textbf{779 credentials/second} and an automated 10-step verification throughput of $\sim$\textbf{202 verifications/second}. On-chain gas consumption for a cohort of 10,000 graduates is reduced by \textbf{$\sim$9,800$\times$} ($\sim$10.5 gas per credential amortized), saving thousands of dollars in transaction overhead while accelerating end-to-end verification latency by $\sim$3$\times$ ($\sim$204~ms). All smart contracts achieved \textbf{100\% code coverage} and passed rigorous static analysis against the Slither vulnerability taxonomy, proving the system to be a practical, robust, and scalable solution for national and institutional credential management.
+Empirical evaluation and stress testing demonstrate that the proposed system achieves a signing throughput of $\sim$\textbf{809 credentials/second} and an automated 10-step verification throughput of $\sim$\textbf{182 verifications/second}. On-chain gas consumption for a cohort of 10,000 graduates is reduced by over \textbf{1,400$\times$} ($\sim$\textbf{16.8 gas per credential amortized} on Ethereum Sepolia), saving thousands of dollars in transaction overhead while accelerating end-to-end verification latency by $\sim$3$\times$ ($\sim$5.5~ms offline / $\sim$200~ms online). All smart contracts achieved \textbf{100\% code coverage} and passed rigorous static analysis against the Slither vulnerability taxonomy, demonstrating the system to be a practical, efficient, and scalable solution for institutional-scale academic credential management.
 
 \vspace{0.5cm}
 \noindent\textbf{Keywords:} Blockchain, Verifiable Credentials, EIP-712, Merkle Tree, Selective Disclosure, Smart Contracts, Ethereum, Decentralized Trust Anchor, Academic Credential Verification.
 
+\iffalse % Not part of the required order (cover, authorship, thanks, abstract, TOC, ...)
 \prefacesection{Project Progress and Technical Achievements}
 
 This report systematically details the theoretical foundations, architectural designs, smart contract implementations, software development kit (SDK), and empirical evaluation results of the \textbf{BK Credential System} completed over the comprehensive 15-week project lifecycle.
 
-Key milestones accomplished to date include:
+Key milestones accomplished include:
 \begin{itemize}
     \item \textbf{Comprehensive Technical Specification}: Formalized in \texttt{SPEC.md} ($\sim$56~KB), defining EIP-712 domain schemas, nested struct type hashing rules, 10-step verification algorithms, and the STRIDE threat model.
     \item \textbf{Smart Contract Suite}: Developed and verified \texttt{IssuerRegistry.sol} and \texttt{CredentialRegistryV3.sol} on Sepolia Testnet, supported by 52 automated test cases achieving \textbf{100\% Statement, Branch, Function, and Line coverage}.
     \item \textbf{Core EIP-712 SDK \& Bulk Issuance Engine}: Built a modular TypeScript SDK and high-performance chunking engine (\texttt{bulk.ts}) capable of processing and anchoring cohorts of 10,000 credentials in under 28 seconds.
     \item \textbf{Integrated Web Application}: Deployed 4 interactive portals (Issuer Batch Portal with real-time SSE progress streaming, Holder Wallet with Selective Disclosure, Public 10-Step Verifier, and Administrator Key Manager) integrated with PostgreSQL via Prisma ORM.
-    \item \textbf{Exhaustive Empirical Evaluation (Scenarios A--E)}: Conducted rigorous benchmarks demonstrating an offline signing throughput of $\sim$809 creds/sec, average verification latency of 5.502 ms, 100\% success rate under $C=500$ concurrent load, and a 9,785$\times$ reduction in on-chain gas costs for 10,000-student batches.
-    \item \textbf{Production Testnet Validation}: Anchored a live cohort of 10,000 credentials onto Ethereum Sepolia (tx \texttt{0x54b11343...}, 167,804 gas, 100\% verification pass rate).
+    \item \textbf{Empirical Performance Evaluation and Benchmarking (Scenarios A--E)}: Conducted rigorous benchmarks demonstrating an offline signing throughput of $\sim$809 creds/sec, average verification latency of 5.502 ms, 100\% success rate under $C=500$ concurrent load, and an over 1,400$\times$ reduction in amortized on-chain gas costs for 10,000-student batches compared to Phase 2.
+    \item \textbf{Testnet Validation}: Anchored a live cohort of 10,000 credentials onto Ethereum Sepolia (tx \texttt{0x54b11343...}, 167,804 gas, 100\% verification pass rate).
 \end{itemize}
-    
+\fi
+
 \afterpreface
+
+\cleardoublepage
+\pagenumbering{arabic}
+\setcounter{page}{1}
 
 \include{chapter/chap01.tex}
 \clearpage
@@ -136,6 +146,7 @@ Key milestones accomplished to date include:
 
 \renewcommand{\bibname}{References}
 \bibliographystyle{ieeetr}
+\nocite{*}
 \bibliography{thesiscite}
 
 \appendix
